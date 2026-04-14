@@ -140,6 +140,26 @@
     .field-group input::placeholder { color: var(--muted); font-weight: 300; }
     .field-group input:disabled { opacity: 0.45; cursor: not-allowed; }
 
+    .field-group textarea {
+      width: 100%;
+      background: var(--input);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 300;
+      padding: 10px 12px;
+      outline: none;
+      resize: vertical;
+      min-height: 72px;
+      line-height: 1.6;
+      transition: border-color 0.15s;
+    }
+
+    .field-group textarea:focus { border-color: var(--accent); }
+    .field-group textarea::placeholder { color: var(--muted); font-weight: 300; }
+    .field-group textarea:disabled { opacity: 0.45; cursor: not-allowed; }
+
     /* Remove number input spinners */
     .field-group input[type=number]::-webkit-inner-spin-button,
     .field-group input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
@@ -553,6 +573,11 @@
       </div>
     </div>
 
+    <div class="field-group" style="margin-top:14px">
+      <label for="f-context">Additional Context <span style="color:var(--muted);font-weight:300;letter-spacing:0">(optional)</span></label>
+      <textarea id="f-context" placeholder="e.g. Booking is for 2 passengers. The agent may ask for the last 4 digits of my card: 1234." spellcheck="false"></textarea>
+    </div>
+
     <div class="quick-links">
       <a class="quick-link" href="https://travel.capitalone.com/trips/" target="_blank" rel="noopener">
         <span class="ql-icon">↗</span>
@@ -560,7 +585,7 @@
       </a>
       <a class="quick-link" href="tel:844-422-6922">
         <span class="ql-icon">📞</span>
-        <span class="ql-text">Call Price Match Center</span>
+        <span class="ql-text">Price Match Call Center</span>
       </a>
     </div>
 
@@ -616,6 +641,7 @@
   const fRetailer  = $('f-retailer');
   const fPrice     = $('f-price');
   const fVoice     = $('f-voice');
+  const fContext   = $('f-context');
   const previewBtn = $('preview-btn');
   const callBtn    = $('call-btn');
   const timerEl    = $('timer');
@@ -803,22 +829,24 @@
   }
 
   // ── System prompt ─────────────────────────────────────────
-  function buildSystemPrompt(name, code, retailer, price) {
-    return [
+  function buildSystemPrompt(name, code, retailer, price, context) {
+    const lines = [
       `You are handling a Capital One travel price match call on behalf of ${name}.`,
       `You will be asked for: confirmation code (${code}), full name (${name}), where the lower price was found (${retailer}), and the price found ($${price}).`,
       `Answer only what is directly asked. Be brief and natural — 1-2 sentences max.`,
       `Do not volunteer information unprompted.`,
       `If asked something unexpected or unclear, say "Could you repeat that?" to buy time.`,
       `Speak in a calm, natural conversational tone. Do not sound robotic or scripted.`,
-    ].join('\n');
+    ];
+    if (context) lines.push(`\nAdditional context:\n${context}`);
+    return lines.join('\n');
   }
 
-  function sendSessionUpdate(name, code, retailer, price) {
+  function sendSessionUpdate(name, code, retailer, price, context) {
     const payload = {
       type: 'session.update',
       session: {
-        instructions: buildSystemPrompt(name, code, retailer, price),
+        instructions: buildSystemPrompt(name, code, retailer, price, context),
         input_audio_transcription: { model: 'whisper-1' },
         turn_detection: { type: 'server_vad' },
       },
@@ -827,7 +855,7 @@
   }
 
   // ── Fields helpers ────────────────────────────────────────
-  const fields = [fCode, fName, fRetailer, fPrice, fVoice];
+  const fields = [fCode, fName, fRetailer, fPrice, fVoice, fContext];
 
   function lockFields(v) {
     fields.forEach(f => f.disabled = v);
@@ -891,6 +919,7 @@
     const name     = fName.value.trim();
     const retailer = fRetailer.value.trim();
     const price    = fPrice.value.trim();
+    const context  = fContext.value.trim();
 
     if (!code || !name || !retailer || !price) {
       showError('All four fields are required before starting the call.');
@@ -946,7 +975,7 @@
       dc = pc.createDataChannel('oai-events', { ordered: true });
 
       dc.onopen = () => {
-        sendSessionUpdate(name, code, retailer, price);
+        sendSessionUpdate(name, code, retailer, price, context);
         callState = 'active';
         startTimer();
         setStatus('listening');
