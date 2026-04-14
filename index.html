@@ -151,6 +151,65 @@
       gap: 12px;
     }
 
+    /* ── Voice selector ─────────────────────────────────────  */
+    .voice-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: end;
+    }
+
+    .field-group select {
+      width: 100%;
+      background: var(--input);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 400;
+      padding: 10px 12px;
+      outline: none;
+      cursor: pointer;
+      -webkit-appearance: none;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235A5B62'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 30px;
+      transition: border-color 0.15s;
+    }
+
+    .field-group select:focus { border-color: var(--accent); }
+    .field-group select:disabled { opacity: 0.45; cursor: not-allowed; }
+    .field-group select option { background: var(--input); color: var(--text); }
+
+    .preview-btn {
+      height: 39px;
+      padding: 0 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--dim);
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 400;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: color 0.15s, border-color 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .preview-btn:hover:not(:disabled) { color: var(--text); border-color: var(--dim); }
+    .preview-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .preview-btn .play-icon { font-size: 9px; }
+
+    .preview-btn.loading .play-icon { animation: spin 0.8s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
     .panel-divider {
       border: none;
       border-top: 1px solid var(--border);
@@ -435,6 +494,25 @@
           <input id="f-price" type="number" placeholder="0.00" min="0" step="0.01" autocomplete="off">
         </div>
       </div>
+
+      <div class="voice-row">
+        <div class="field-group" style="margin-bottom:0">
+          <label for="f-voice">Voice</label>
+          <select id="f-voice">
+            <option value="alloy">alloy</option>
+            <option value="ash" selected>ash</option>
+            <option value="ballad">ballad</option>
+            <option value="coral">coral</option>
+            <option value="echo">echo</option>
+            <option value="sage">sage</option>
+            <option value="shimmer">shimmer</option>
+            <option value="verse">verse</option>
+          </select>
+        </div>
+        <button class="preview-btn" id="preview-btn" title="Preview voice">
+          <span class="play-icon">▶</span> PREVIEW
+        </button>
+      </div>
     </div>
 
     <hr class="panel-divider">
@@ -484,20 +562,22 @@
 
   // ── DOM refs ──────────────────────────────────────────────
   const $ = id => document.getElementById(id);
-  const fCode     = $('f-code');
-  const fName     = $('f-name');
-  const fRetailer = $('f-retailer');
-  const fPrice    = $('f-price');
-  const callBtn   = $('call-btn');
-  const timerEl   = $('timer');
-  const sDot      = $('s-dot');
-  const sLabel    = $('s-label');
-  const errBanner = $('error-banner');
-  const feed      = $('feed');
-  const emptyState= $('empty-state');
-  const lineCount = $('line-count');
-  const clearBtn  = $('clear-btn');
-  const audioEl   = $('remote-audio');
+  const fCode      = $('f-code');
+  const fName      = $('f-name');
+  const fRetailer  = $('f-retailer');
+  const fPrice     = $('f-price');
+  const fVoice     = $('f-voice');
+  const previewBtn = $('preview-btn');
+  const callBtn    = $('call-btn');
+  const timerEl    = $('timer');
+  const sDot       = $('s-dot');
+  const sLabel     = $('s-label');
+  const errBanner  = $('error-banner');
+  const feed       = $('feed');
+  const emptyState = $('empty-state');
+  const lineCount  = $('line-count');
+  const clearBtn   = $('clear-btn');
+  const audioEl    = $('remote-audio');
 
   // ── Runtime state ─────────────────────────────────────────
   let pc           = null;   // RTCPeerConnection
@@ -698,11 +778,61 @@
   }
 
   // ── Fields helpers ────────────────────────────────────────
-  const fields = [fCode, fName, fRetailer, fPrice];
+  const fields = [fCode, fName, fRetailer, fPrice, fVoice];
 
   function lockFields(v) {
     fields.forEach(f => f.disabled = v);
+    previewBtn.disabled = v;
   }
+
+  // ── Voice preview ─────────────────────────────────────────
+  let previewAudio = null;
+
+  previewBtn.addEventListener('click', async () => {
+    // Stop any in-progress preview
+    if (previewAudio) {
+      previewAudio.pause();
+      previewAudio = null;
+    }
+
+    const voice = fVoice.value;
+    previewBtn.disabled = true;
+    previewBtn.classList.add('loading');
+    previewBtn.querySelector('.play-icon').textContent = '↻';
+
+    try {
+      const res = await fetch('https://api.openai.com/v1/audio/speech', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'tts-1',
+          voice,
+          input: "Hi, this is Shagun calling about a price match on a recent booking.",
+          speed: 1.0,
+        }),
+      });
+
+      if (!res.ok) throw new Error(`Preview failed (HTTP ${res.status})`);
+
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      previewAudio = new Audio(url);
+      previewAudio.onended = () => {
+        URL.revokeObjectURL(url);
+        previewAudio = null;
+      };
+      previewAudio.play();
+    } catch (err) {
+      showError(`Preview error: ${err.message}`);
+    } finally {
+      previewBtn.disabled = false;
+      previewBtn.classList.remove('loading');
+      previewBtn.querySelector('.play-icon').textContent = '▶';
+    }
+  });
 
   // ── Start call ────────────────────────────────────────────
   async function startCall() {
@@ -732,7 +862,7 @@
         },
         body: JSON.stringify({
           model: 'gpt-4o-realtime-preview',
-          voice: 'alloy',
+          voice: fVoice.value,
           input_audio_transcription: { model: 'whisper-1' },
           turn_detection: { type: 'server_vad' },
         }),
