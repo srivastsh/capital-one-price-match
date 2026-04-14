@@ -191,6 +191,23 @@
     .log-del { position:absolute; top:9px; right:10px; background:none; border:none; color:var(--muted); font-size:14px; cursor:pointer; opacity:0; transition:opacity .15s,color .15s; padding:1px 4px; line-height:1; }
     .log-entry:hover .log-del { opacity:1; }
     .log-del:hover { color:var(--red); }
+
+    /* Outcome toggle buttons */
+    .outcome-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .outcome-btn { padding:8px 0; font-family:var(--mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase; background:var(--surface); border:1px solid var(--border); color:var(--dim); cursor:pointer; transition:all .15s; }
+    .outcome-btn:hover:not(.active) { color:var(--text); border-color:var(--dim); }
+    .outcome-btn.success.active { border-color:var(--green); color:var(--green); background:rgba(0,230,118,.08); }
+    .outcome-btn.failure.active { border-color:var(--red); color:var(--red); background:rgba(255,82,82,.08); }
+
+    /* Log outcome tag */
+    .log-outcome { font-family:var(--mono); font-size:9px; font-weight:500; letter-spacing:.1em; padding:2px 6px; border:1px solid; text-transform:uppercase; }
+    .log-outcome.success { border-color:var(--green); color:var(--green); background:rgba(0,230,118,.08); }
+    .log-outcome.failure { border-color:var(--red); color:var(--red); background:rgba(255,82,82,.08); }
+
+    /* Savings display */
+    .savings-display { font-family:var(--mono); font-size:10px; color:var(--dim); padding:4px 0 2px; display:none; }
+    .savings-display.visible { display:block; }
+    .savings-amount { color:var(--green); font-weight:500; }
   </style>
 </head>
 <body>
@@ -213,16 +230,21 @@
         <label for="f-name">Full Name</label>
         <input id="f-name" type="text" placeholder="e.g. Jane Smith" autocomplete="off" spellcheck="false">
       </div>
+      <div class="field-group">
+        <label for="f-retailer">Retailer / Where Found</label>
+        <input id="f-retailer" type="text" placeholder="Google Flights" autocomplete="off" spellcheck="false">
+      </div>
       <div class="field-row">
-        <div class="field-group">
-          <label for="f-retailer">Retailer / Where Found</label>
-          <input id="f-retailer" type="text" placeholder="Google Flights" autocomplete="off" spellcheck="false">
-        </div>
         <div class="field-group">
           <label for="f-price">Price Found</label>
           <input id="f-price" type="number" placeholder="0.00" min="0" step="0.01" autocomplete="off">
         </div>
+        <div class="field-group">
+          <label for="f-orig-price">Original Price</label>
+          <input id="f-orig-price" type="number" placeholder="0.00" min="0" step="0.01" autocomplete="off">
+        </div>
       </div>
+      <div class="savings-display" id="savings-display"></div>
       <div class="field-row">
         <div class="field-group">
           <label for="f-fare">Fare Class</label>
@@ -230,7 +252,12 @@
         </div>
         <div class="field-group">
           <label for="f-cancel">Cancellation Policy</label>
-          <input id="f-cancel" type="text" value="free cancellation within 24 hours of booking for tickets originating in the U.S." autocomplete="off" spellcheck="false">
+          <select id="f-cancel">
+            <option value="Non-refundable">Non-refundable</option>
+            <option value="Free cancellation within 24 hours of booking for tickets originating in the U.S." selected>Free cancellation (24hr U.S.)</option>
+            <option value="Fully refundable">Fully refundable</option>
+            <option value="Partially refundable">Partially refundable</option>
+          </select>
         </div>
       </div>
       <div class="voice-row">
@@ -290,7 +317,11 @@
 
       <div class="notes-section" id="notes-section" style="display:none">
         <span class="notes-label">Session Notes</span>
-        <textarea id="f-notes" placeholder="Outcome, reference number, follow-up..."></textarea>
+        <div class="outcome-row">
+          <button class="outcome-btn success" id="outcome-success">✓ APPROVED</button>
+          <button class="outcome-btn failure" id="outcome-failure">✗ DENIED</button>
+        </div>
+        <textarea id="f-notes" placeholder="Reference number, follow-up notes..."></textarea>
       </div>
 
       <div class="error-banner" id="error-banner"></div>
@@ -329,8 +360,10 @@
 
   const $ = id => document.getElementById(id[0]==='#' ? id.slice(1) : id);
   const fCode=$("#f-code"), fName=$("#f-name"), fRetailer=$("#f-retailer"), fPrice=$("#f-price");
+  const fOrigPrice=$("#f-orig-price"), savingsDisplay=$("#savings-display");
   const fFare=$("#f-fare"), fCancel=$("#f-cancel");
   const fVoice=$("#f-voice"), fContext=$("#f-context"), fNotes=$("#f-notes");
+  const outcomeSuccess=$("#outcome-success"), outcomeFailure=$("#outcome-failure");
   const previewBtn=$("#preview-btn"), callBtn=$("#call-btn");
   const muteBtn=$("#mute-btn"), pauseBtn=$("#pause-btn"), actionRow=$("#action-row");
   const notesSection=$("#notes-section");
@@ -457,9 +490,11 @@
   }
 
   function buildPrompt(name, code, retailer, price, fare, cancel, context) {
+    const firstName = name.split(' ')[0];
     const lines = [
-      `You are handling a Capital One travel price match call on behalf of ${name}.`,
-      `You will be asked for: confirmation code (${code}), full name (${name}), where the lower price was found (${retailer}), the price found ($${price}), fare class (${fare||'not specified'}), and cancellation policy (${cancel}).`,
+      `You are handling a Capital One travel price match call on behalf of ${firstName}.`,
+      `Full name is "${name}" — only provide the last name if the representative explicitly asks for it.`,
+      `You will be asked for: confirmation code (${code}), first name (${firstName}), where the lower price was found (${retailer}), the price found ($${price}), fare class (${fare||'not specified'}), and cancellation policy (${cancel}).`,
       `Answer only what is directly asked. Be brief and natural — 1-2 sentences max.`,
       `Do not volunteer information unprompted.`,
       `If asked something unexpected or unclear, say "Could you repeat that?" to buy time.`,
@@ -476,7 +511,7 @@
     }));
   }
 
-  const formFields=[fCode,fName,fRetailer,fPrice,fFare,fCancel,fVoice,fContext];
+  const formFields=[fCode,fName,fRetailer,fPrice,fOrigPrice,fFare,fCancel,fVoice,fContext];
   function lockFields(v) { formFields.forEach(f=>f.disabled=v); previewBtn.disabled=v; }
 
   function saveLog() {
@@ -486,12 +521,12 @@
   }
   function updateBadge() { logBadge.textContent=callLog.length; logBadge.classList.toggle('lit',callLog.length>0); }
 
-  function startLogEntry(code, name, retailer, price, voice) {
+  function startLogEntry(code, name, retailer, price, origPrice, voice) {
     const entry = {
       id:Date.now(),
       date:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
       time:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
-      duration:'--:--', code, name, retailer, price, voice, notes:''
+      duration:'--:--', code, name, retailer, price, origPrice, voice, outcome:null, notes:''
     };
     currentLogId=entry.id; callLog.unshift(entry); saveLog();
   }
@@ -504,6 +539,17 @@
 
   function updateLogNotes(notes) { const e=callLog.find(e=>e.id===currentLogId); if(e){e.notes=notes;saveLog();} }
 
+  function updateLogOutcome(outcome) {
+    const e=callLog.find(e=>e.id===currentLogId); if(!e) return;
+    e.outcome = e.outcome===outcome ? null : outcome;
+    saveLog(); syncOutcomeUI(e.outcome);
+  }
+
+  function syncOutcomeUI(outcome) {
+    outcomeSuccess.classList.toggle('active', outcome==='success');
+    outcomeFailure.classList.toggle('active', outcome==='failure');
+  }
+
   function deleteLogEntry(id) { callLog=callLog.filter(e=>e.id!==id); saveLog(); renderLog(); }
 
   function renderLog() {
@@ -515,9 +561,16 @@
       const del=document.createElement('button'); del.className='log-del'; del.title='Delete'; del.textContent='×';
       del.addEventListener('click',()=>deleteLogEntry(entry.id));
       const top=document.createElement('div'); top.className='log-entry-top';
+      const topLeft=document.createElement('div'); topLeft.style.cssText='display:flex;align-items:center;gap:8px;';
       const dt=document.createElement('span'); dt.className='log-entry-dt'; dt.textContent=`${entry.date} · ${entry.time}`;
+      topLeft.appendChild(dt);
+      if (entry.outcome) {
+        const tag=document.createElement('span'); tag.className=`log-outcome ${entry.outcome}`;
+        tag.textContent=entry.outcome==='success'?'✓ APPROVED':'✗ DENIED';
+        topLeft.appendChild(tag);
+      }
       const dur=document.createElement('span'); dur.className='log-entry-dur'; dur.textContent=entry.duration;
-      top.appendChild(dt); top.appendChild(dur);
+      top.appendChild(topLeft); top.appendChild(dur);
       const fields=document.createElement('div'); fields.className='log-entry-fields';
       [['Code',entry.code],['Name',entry.name],['Retailer',entry.retailer],['Price',`$${entry.price}`],['Voice',entry.voice]].forEach(([l,v])=>{
         const f=document.createElement('span'); f.className='log-field';
@@ -525,6 +578,13 @@
         const val=document.createElement('span'); val.className='log-field-val'; val.textContent=v;
         f.appendChild(lbl); f.appendChild(val); fields.appendChild(f);
       });
+      if (entry.origPrice && parseFloat(entry.origPrice)>parseFloat(entry.price||0)) {
+        const diff=(parseFloat(entry.origPrice)-parseFloat(entry.price)).toFixed(2);
+        const f=document.createElement('span'); f.className='log-field';
+        const lbl=document.createElement('span'); lbl.className='log-field-lbl'; lbl.textContent='Saved';
+        const val=document.createElement('span'); val.className='log-field-val'; val.style.color='var(--green)'; val.textContent=`$${diff}`;
+        f.appendChild(lbl); f.appendChild(val); fields.appendChild(f);
+      }
       el.appendChild(del); el.appendChild(top); el.appendChild(fields);
       if (entry.notes) { const n=document.createElement('div'); n.className='log-entry-notes'; n.textContent=entry.notes; el.appendChild(n); }
       logPanel.appendChild(el);
@@ -590,7 +650,7 @@
       dc.onopen=()=>{
         sendSessionUpdate(name,code,retailer,price,fare,cancel,context);
         callState='active'; isMuted=false; isPaused=false;
-        startLogEntry(code,name,retailer,price,fVoice.value);
+        startLogEntry(code,name,retailer,price,fOrigPrice.value.trim(),fVoice.value);
         startTimer(); setStatus('listening'); actionRow.style.display='';
       };
       dc.onmessage=onServerEvent;
@@ -617,7 +677,7 @@
     muteBtn.textContent='🎤 MUTE'; muteBtn.classList.remove('muted');
     pauseBtn.textContent='⏸ PAUSE'; pauseBtn.classList.remove('paused');
     actionRow.style.display='none';
-    if (currentLogId) { notesSection.style.display=''; fNotes.focus(); }
+    if (currentLogId) { notesSection.style.display=''; syncOutcomeUI(null); fNotes.focus(); }
     setStatus('idle'); lockFields(false);
   }
 
@@ -628,6 +688,23 @@
   muteBtn.addEventListener('click', toggleMute);
   pauseBtn.addEventListener('click', togglePause);
   fNotes.addEventListener('input',()=>updateLogNotes(fNotes.value.trim()));
+
+  function updateSavings() {
+    const orig=parseFloat(fOrigPrice.value), found=parseFloat(fPrice.value);
+    if (!isNaN(orig) && !isNaN(found) && orig>0 && found>0 && orig>found) {
+      const diff=(orig-found).toFixed(2);
+      savingsDisplay.textContent='';
+      savingsDisplay.appendChild(document.createTextNode(`$${orig.toFixed(2)} → $${found.toFixed(2)} — save `));
+      const amt=document.createElement('span'); amt.className='savings-amount'; amt.textContent=`$${diff}`;
+      savingsDisplay.appendChild(amt);
+      savingsDisplay.classList.add('visible');
+    } else { savingsDisplay.classList.remove('visible'); }
+  }
+  fPrice.addEventListener('input', updateSavings);
+  fOrigPrice.addEventListener('input', updateSavings);
+
+  outcomeSuccess.addEventListener('click',()=>updateLogOutcome('success'));
+  outcomeFailure.addEventListener('click',()=>updateLogOutcome('failure'));
 
   clearBtn.addEventListener('click',()=>{
     feed.querySelectorAll('.transcript-line').forEach(el=>el.remove());
