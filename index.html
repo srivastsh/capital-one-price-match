@@ -216,6 +216,44 @@
       margin: 24px 0;
     }
 
+    /* ── Quick links ────────────────────────────────────────  */
+    .quick-links {
+      display: flex;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .quick-link {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 9px 11px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 400;
+      color: var(--dim);
+      text-decoration: none;
+      transition: color 0.15s, border-color 0.15s;
+      overflow: hidden;
+    }
+
+    .quick-link:hover { color: var(--text); border-color: var(--dim); }
+
+    .quick-link .ql-icon {
+      font-size: 10px;
+      flex-shrink: 0;
+      color: var(--muted);
+    }
+
+    .quick-link .ql-text {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
     /* ── Controls ───────────────────────────────────────────  */
     .controls-section {
       display: flex;
@@ -513,6 +551,17 @@
           <span class="play-icon">▶</span> PREVIEW
         </button>
       </div>
+    </div>
+
+    <div class="quick-links">
+      <a class="quick-link" href="https://travel.capitalone.com/trips/" target="_blank" rel="noopener">
+        <span class="ql-icon">↗</span>
+        <span class="ql-text">My Trips</span>
+      </a>
+      <a class="quick-link" href="tel:844-422-6922">
+        <span class="ql-icon">✆</span>
+        <span class="ql-text">844-422-6922</span>
+      </a>
     </div>
 
     <hr class="panel-divider">
