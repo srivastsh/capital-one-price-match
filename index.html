@@ -223,6 +223,16 @@
           <input id="f-price" type="number" placeholder="0.00" min="0" step="0.01" autocomplete="off">
         </div>
       </div>
+      <div class="field-row">
+        <div class="field-group">
+          <label for="f-fare">Fare Class</label>
+          <input id="f-fare" type="text" placeholder="e.g. Economy, Business" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="field-group">
+          <label for="f-cancel">Cancellation Policy</label>
+          <input id="f-cancel" type="text" value="free cancellation within 24 hours of booking for tickets originating in the U.S." autocomplete="off" spellcheck="false">
+        </div>
+      </div>
       <div class="voice-row">
         <div class="field-group" style="margin-bottom:0">
           <label for="f-voice">Voice</label>
@@ -319,6 +329,7 @@
 
   const $ = id => document.getElementById(id[0]==='#' ? id.slice(1) : id);
   const fCode=$("#f-code"), fName=$("#f-name"), fRetailer=$("#f-retailer"), fPrice=$("#f-price");
+  const fFare=$("#f-fare"), fCancel=$("#f-cancel");
   const fVoice=$("#f-voice"), fContext=$("#f-context"), fNotes=$("#f-notes");
   const previewBtn=$("#preview-btn"), callBtn=$("#call-btn");
   const muteBtn=$("#mute-btn"), pauseBtn=$("#pause-btn"), actionRow=$("#action-row");
@@ -445,10 +456,10 @@
     setStatus(isPaused?'paused':'listening');
   }
 
-  function buildPrompt(name, code, retailer, price, context) {
+  function buildPrompt(name, code, retailer, price, fare, cancel, context) {
     const lines = [
       `You are handling a Capital One travel price match call on behalf of ${name}.`,
-      `You will be asked for: confirmation code (${code}), full name (${name}), where the lower price was found (${retailer}), and the price found ($${price}).`,
+      `You will be asked for: confirmation code (${code}), full name (${name}), where the lower price was found (${retailer}), the price found ($${price}), fare class (${fare||'not specified'}), and cancellation policy (${cancel}).`,
       `Answer only what is directly asked. Be brief and natural — 1-2 sentences max.`,
       `Do not volunteer information unprompted.`,
       `If asked something unexpected or unclear, say "Could you repeat that?" to buy time.`,
@@ -458,14 +469,14 @@
     return lines.join('\n');
   }
 
-  function sendSessionUpdate(name, code, retailer, price, context) {
+  function sendSessionUpdate(name, code, retailer, price, fare, cancel, context) {
     dc.send(JSON.stringify({
       type:'session.update',
-      session:{ instructions:buildPrompt(name,code,retailer,price,context), input_audio_transcription:{model:'whisper-1'}, turn_detection:{type:'server_vad'} }
+      session:{ instructions:buildPrompt(name,code,retailer,price,fare,cancel,context), input_audio_transcription:{model:'whisper-1'}, turn_detection:{type:'server_vad'} }
     }));
   }
 
-  const formFields=[fCode,fName,fRetailer,fPrice,fVoice,fContext];
+  const formFields=[fCode,fName,fRetailer,fPrice,fFare,fCancel,fVoice,fContext];
   function lockFields(v) { formFields.forEach(f=>f.disabled=v); previewBtn.disabled=v; }
 
   function saveLog() {
@@ -552,7 +563,8 @@
     clearError();
     currentLogId=null; notesSection.style.display='none'; fNotes.value='';
     const code=fCode.value.trim(), name=fName.value.trim();
-    const retailer=fRetailer.value.trim(), price=fPrice.value.trim(), context=fContext.value.trim();
+    const retailer=fRetailer.value.trim(), price=fPrice.value.trim();
+    const fare=fFare.value.trim(), cancel=fCancel.value.trim(), context=fContext.value.trim();
     if (!code||!name||!retailer||!price) { showError('All four fields are required before starting the call.'); return; }
     callState='connecting'; setStatus('connecting'); lockFields(true);
     try {
@@ -576,7 +588,7 @@
 
       dc=pc.createDataChannel('oai-events',{ordered:true});
       dc.onopen=()=>{
-        sendSessionUpdate(name,code,retailer,price,context);
+        sendSessionUpdate(name,code,retailer,price,fare,cancel,context);
         callState='active'; isMuted=false; isPaused=false;
         startLogEntry(code,name,retailer,price,fVoice.value);
         startTimer(); setStatus('listening'); actionRow.style.display='';
