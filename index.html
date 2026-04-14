@@ -92,6 +92,24 @@
     .call-btn.active     { background:var(--red);     color:#fff; }
     .call-btn:disabled   { opacity:.45; cursor:not-allowed; }
 
+    /* Email import */
+    .import-section { margin-bottom:20px; }
+    .import-toggle { width:100%; display:flex; align-items:center; gap:8px; padding:9px 12px; background:var(--surface); border:1px solid var(--border); color:var(--dim); font-family:var(--mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase; cursor:pointer; transition:color .15s,border-color .15s; }
+    .import-toggle:hover { color:var(--text); border-color:var(--dim); }
+    .import-toggle.open { border-color:var(--accent); color:var(--accent); }
+    .import-chevron { margin-left:auto; font-size:8px; transition:transform .2s; }
+    .import-chevron.open { transform:rotate(180deg); }
+    .import-body { border:1px solid var(--border); border-top:none; padding:12px; display:flex; flex-direction:column; gap:8px; }
+    .import-body textarea { width:100%; background:var(--input); border:1px solid var(--border); color:var(--text); font-family:var(--mono); font-size:11px; font-weight:300; padding:10px 12px; outline:none; resize:vertical; min-height:110px; line-height:1.6; }
+    .import-body textarea:focus { border-color:var(--accent); }
+    .import-body textarea::placeholder { color:var(--muted); }
+    .import-parse-btn { padding:9px 0; background:var(--accent); border:none; color:#000; font-family:var(--mono); font-size:11px; font-weight:500; letter-spacing:.1em; text-transform:uppercase; cursor:pointer; transition:opacity .15s; }
+    .import-parse-btn:hover:not(:disabled) { opacity:.85; }
+    .import-parse-btn:disabled { opacity:.4; cursor:not-allowed; }
+    .import-status { font-family:var(--mono); font-size:10px; color:var(--dim); min-height:14px; }
+    .import-status.ok  { color:var(--green); }
+    .import-status.err { color:var(--red); }
+
     /* Live prompt */
     .live-prompt-section { display:flex; flex-direction:column; gap:6px; }
     .live-prompt-label { font-family:var(--sans); font-size:10px; font-weight:500; letter-spacing:.1em; color:var(--dim); text-transform:uppercase; }
@@ -251,6 +269,18 @@
 <div class="app-body">
 
   <aside class="panel-left">
+    <div class="import-section">
+      <button class="import-toggle" id="import-toggle">
+        <span>⬇ IMPORT FROM EMAIL</span>
+        <span class="import-chevron" id="import-chevron">▼</span>
+      </button>
+      <div class="import-body" id="import-body" style="display:none">
+        <textarea id="f-email" placeholder="Paste your Capital One booking confirmation email here...&#10;&#10;Confirmation code, airline, route, dates, prices and passenger names will be auto-filled." spellcheck="false"></textarea>
+        <button class="import-parse-btn" id="import-parse-btn">PARSE &amp; FILL FIELDS →</button>
+        <div class="import-status" id="import-status"></div>
+      </div>
+    </div>
+
     <div class="fields-section">
       <div class="section-label">Call Details</div>
       <div class="field-group">
@@ -276,6 +306,10 @@
             <option value="2+ stops">2+ stops</option>
           </select>
         </div>
+      </div>
+      <div class="field-group" id="layover-details-group" style="display:none">
+        <label for="f-layover-details">Layover Details</label>
+        <input id="f-layover-details" type="text" placeholder="e.g. 2h 5m in Lisbon (LIS)" autocomplete="off" spellcheck="false">
       </div>
       <div class="field-row">
         <div class="field-group">
@@ -441,8 +475,11 @@
   const $ = id => document.getElementById(id[0]==='#' ? id.slice(1) : id);
   const fCode=$("#f-code"), fName=$("#f-name"), fRetailer=$("#f-retailer"), fPrice=$("#f-price");
   const fOrigPrice=$("#f-orig-price"), savingsDisplay=$("#savings-display");
+  const importToggle=$("#import-toggle"), importChevron=$("#import-chevron"), importBody=$("#import-body");
+  const fEmail=$("#f-email"), importParseBtn=$("#import-parse-btn"), importStatus=$("#import-status");
   const fAirline=$("#f-airline"), fLayovers=$("#f-layovers"), fFrom=$("#f-from"), fTo=$("#f-to");
   const fDepart=$("#f-depart"), fReturn=$("#f-return");
+  const fLayoverDetails=$("#f-layover-details"), layoverDetailsGroup=$("#layover-details-group");
   const fFare=$("#f-fare"), fCancel=$("#f-cancel");
   const fVoice=$("#f-voice"), fContext=$("#f-context"), fNotes=$("#f-notes");
   const outcomeSuccess=$("#outcome-success"), outcomeFailure=$("#outcome-failure");
@@ -572,17 +609,17 @@
     setStatus(isPaused?'paused':'listening');
   }
 
-  function buildPrompt(name, code, airline, layovers, from, to, depart, ret, retailer, price, origPrice, fare, cancel, context) {
+  function buildPrompt(name, code, airline, layovers, layoverDetails, from, to, depart, ret, retailer, price, origPrice, fare, cancel, context) {
     const firstName = name.split(' ')[0];
     const lastName = name.includes(' ') ? name.split(' ').slice(1).join(' ') : null;
     const orig = parseFloat(origPrice||0), found = parseFloat(price||0);
     const diff = (orig>0 && found>0 && orig>found) ? (orig-found).toFixed(2) : null;
-    const flightLine = [airline, from&&to?`${from} → ${to}`:'', depart, ret&&ret!=='one-way'?`return ${ret}`:''].filter(Boolean).join(' · ');
+    const flightLine = [airline, from&&to?`${from} → ${to}`:'', depart, ret&&ret!=='one-way'?`return ${ret}`:'', layovers&&layovers!=='nonstop'?layovers:''].filter(Boolean).join(' · ');
     return `You ARE ${firstName} — a real person calling Capital One travel support to request a price match. You are not an AI assistant. You are the customer.
 
 Your booking info (only reveal each piece when directly asked — never volunteer it):
 - First name: ${firstName}${lastName ? `\n- Last name: ${lastName} (only give this if they specifically ask for your last name)` : ''}
-- Confirmation code: ${code}${flightLine?`\n- Flight: ${flightLine}`:''}${airline?`\n- Airline: ${airline}`:''}${from&&to?`\n- Route: ${from} → ${to}`:''}${layovers?`\n- Layovers: ${layovers}`:''}${depart?`\n- Departure: ${depart}`:''}${ret?`\n- Return: ${ret}`:''}
+- Confirmation code: ${code}${flightLine?`\n- Flight: ${flightLine}`:''}${airline?`\n- Airline: ${airline}`:''}${from&&to?`\n- Route: ${from} → ${to}`:''}${layovers?`\n- Layovers: ${layovers}${layoverDetails?` (${layoverDetails})`:''}`:''}${depart?`\n- Departure: ${depart}`:''}${ret?`\n- Return: ${ret}`:''}
 - Original price paid: $${orig>0?orig.toFixed(2):'unknown'}
 - Lower price found at ${retailer}: $${found>0?found.toFixed(2):price}${diff?`\n- Difference: $${diff} less than what you paid`:''}
 - Fare class: ${fare||'economy'}
@@ -624,11 +661,11 @@ Rules:
 - You're a mildly impatient but polite customer who just wants this handled quickly`;
   }
 
-  function sendSessionUpdate(name, code, airline, layovers, from, to, depart, ret, retailer, price, origPrice, fare, cancel, context) {
+  function sendSessionUpdate(name, code, airline, layovers, layoverDetails, from, to, depart, ret, retailer, price, origPrice, fare, cancel, context) {
     dc.send(JSON.stringify({
       type:'session.update',
       session:{
-        instructions: buildPrompt(name,code,airline,layovers,from,to,depart,ret,retailer,price,origPrice,fare,cancel,context),
+        instructions: buildPrompt(name,code,airline,layovers,layoverDetails,from,to,depart,ret,retailer,price,origPrice,fare,cancel,context),
         input_audio_transcription: { model:'whisper-1' },
         turn_detection: { type:'server_vad' },
         temperature: 1.0
@@ -636,7 +673,7 @@ Rules:
     }));
   }
 
-  const formFields=[fCode,fName,fAirline,fLayovers,fFrom,fTo,fDepart,fReturn,fRetailer,fPrice,fOrigPrice,fFare,fCancel,fVoice,fContext];
+  const formFields=[fCode,fName,fAirline,fLayovers,fLayoverDetails,fFrom,fTo,fDepart,fReturn,fRetailer,fPrice,fOrigPrice,fFare,fCancel,fVoice,fContext];
   function lockFields(v) { formFields.forEach(f=>f.disabled=v); previewBtn.disabled=v; }
 
   function saveLog() {
@@ -827,7 +864,7 @@ Rules:
     currentLogId=null; notesSection.style.display='none'; fNotes.value='';
     const code=fCode.value.trim(), name=fName.value.trim();
     const airline=fAirline.value.trim(), layovers=fLayovers.value, from=fFrom.value.trim(), to=fTo.value.trim();
-    const depart=fDepart.value.trim(), ret=fReturn.value.trim();
+    const depart=fDepart.value.trim(), ret=fReturn.value.trim(), layoverDetails=fLayoverDetails.value.trim();
     const retailer=fRetailer.value.trim(), price=fPrice.value.trim(), origPrice=fOrigPrice.value.trim();
     const fare=fFare.value.trim(), cancel=fCancel.value.trim(), context=fContext.value.trim();
     if (!code||!name||!retailer||!price) { showError('All four fields are required before starting the call.'); return; }
@@ -853,7 +890,7 @@ Rules:
 
       dc=pc.createDataChannel('oai-events',{ordered:true});
       dc.onopen=()=>{
-        sendSessionUpdate(name,code,airline,layovers,from,to,depart,ret,retailer,price,origPrice,fare,cancel,context);
+        sendSessionUpdate(name,code,airline,layovers,layoverDetails,from,to,depart,ret,retailer,price,origPrice,fare,cancel,context);
         callState='active'; isMuted=false; isPaused=false;
         startLogEntry(code,name,airline,from,to,depart,retailer,price,origPrice,fVoice.value);
         startTimer(); setStatus('listening'); actionRow.style.display=''; livePromptSection.style.display='';
@@ -913,6 +950,74 @@ Rules:
   }
   fPrice.addEventListener('input', updateSavings);
   fOrigPrice.addEventListener('input', updateSavings);
+
+  // Layover details toggle
+  fLayovers.addEventListener('change', () => {
+    layoverDetailsGroup.style.display = fLayovers.value !== 'nonstop' ? '' : 'none';
+  });
+
+  // Email import
+  importToggle.addEventListener('click', () => {
+    const open = importBody.style.display === 'none';
+    importBody.style.display = open ? '' : 'none';
+    importToggle.classList.toggle('open', open);
+    importChevron.classList.toggle('open', open);
+  });
+
+  async function parseEmailImport() {
+    const emailText = fEmail.value.trim();
+    if (!emailText) return;
+    importParseBtn.disabled = true;
+    importStatus.className = 'import-status';
+    importStatus.textContent = 'Parsing…';
+    try {
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini', temperature: 0,
+          response_format: { type: 'json_object' },
+          messages: [{ role: 'user', content: `Extract flight booking details from this confirmation email. Return ONLY valid JSON with these fields (omit any you cannot find, no nulls):
+{
+  "confirmationCode": "Capital One Travel booking code (not the airline code)",
+  "airline": "airline name",
+  "from": "3-letter origin airport code",
+  "to": "3-letter destination airport code",
+  "departureDate": "departure date e.g. Jun 26, 2026",
+  "returnDate": "return date if round trip",
+  "layovers": "nonstop or 1 stop or 2+ stops",
+  "layoverDetails": "e.g. 2h 5m in Lisbon (LIS)",
+  "primaryPassenger": "first passenger full name",
+  "totalPrice": "total price as a plain number no $ or commas",
+  "fareClass": "fare class name"
+}
+
+Email:
+${emailText}` }]
+        })
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const parsed = JSON.parse((await res.json()).choices[0].message.content);
+      if (parsed.confirmationCode) fCode.value = parsed.confirmationCode;
+      if (parsed.primaryPassenger) fName.value = parsed.primaryPassenger;
+      if (parsed.airline) fAirline.value = parsed.airline;
+      if (parsed.from) fFrom.value = parsed.from;
+      if (parsed.to) fTo.value = parsed.to;
+      if (parsed.departureDate) fDepart.value = parsed.departureDate;
+      if (parsed.returnDate) fReturn.value = parsed.returnDate;
+      if (parsed.layovers) { fLayovers.value = parsed.layovers; layoverDetailsGroup.style.display = parsed.layovers !== 'nonstop' ? '' : 'none'; }
+      if (parsed.layoverDetails) fLayoverDetails.value = parsed.layoverDetails;
+      if (parsed.totalPrice) { fOrigPrice.value = parsed.totalPrice; updateSavings(); }
+      if (parsed.fareClass) fFare.value = parsed.fareClass;
+      importStatus.className = 'import-status ok';
+      importStatus.textContent = '✓ Fields filled — add retailer and price found to continue';
+    } catch(err) {
+      importStatus.className = 'import-status err';
+      importStatus.textContent = `Parse failed: ${err.message}`;
+    } finally { importParseBtn.disabled = false; }
+  }
+
+  importParseBtn.addEventListener('click', parseEmailImport);
 
   outcomeSuccess.addEventListener('click',()=>updateLogOutcome('success'));
   outcomeFailure.addEventListener('click',()=>updateLogOutcome('failure'));
