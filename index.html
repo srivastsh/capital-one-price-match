@@ -92,6 +92,17 @@
     .call-btn.active     { background:var(--red);     color:#fff; }
     .call-btn:disabled   { opacity:.45; cursor:not-allowed; }
 
+    /* Live prompt */
+    .live-prompt-section { display:flex; flex-direction:column; gap:6px; }
+    .live-prompt-label { font-family:var(--sans); font-size:10px; font-weight:500; letter-spacing:.1em; color:var(--dim); text-transform:uppercase; }
+    .live-prompt-row { display:flex; gap:6px; }
+    .live-prompt-row input { flex:1; background:var(--input); border:1px solid var(--accent); color:var(--text); font-family:var(--mono); font-size:12px; font-weight:300; padding:9px 10px; outline:none; transition:border-color .15s; }
+    .live-prompt-row input::placeholder { color:var(--muted); font-weight:300; }
+    .live-prompt-row input:disabled { opacity:.4; cursor:not-allowed; border-color:var(--border); }
+    .live-send-btn { padding:0 14px; background:var(--accent); border:none; color:#000; font-family:var(--mono); font-size:13px; font-weight:500; cursor:pointer; flex-shrink:0; transition:opacity .15s; }
+    .live-send-btn:hover:not(:disabled) { opacity:.82; }
+    .live-send-btn:disabled { opacity:.35; cursor:not-allowed; }
+
     /* Mute / Pause */
     .action-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
     .action-btn {
@@ -329,6 +340,14 @@
         <button class="action-btn" id="pause-btn">⏸ PAUSE</button>
       </div>
 
+      <div class="live-prompt-section" id="live-prompt-section" style="display:none">
+        <span class="live-prompt-label">Live Prompt <span style="color:var(--muted);font-weight:300;letter-spacing:0;text-transform:none">(only you see this)</span></span>
+        <div class="live-prompt-row">
+          <input id="f-live-prompt" type="text" placeholder="e.g. my email is jane@gmail.com" autocomplete="off" spellcheck="false">
+          <button class="live-send-btn" id="live-send-btn">↵</button>
+        </div>
+      </div>
+
       <div class="status-bar">
         <div class="status-dot idle" id="s-dot"></div>
         <span class="status-label idle" id="s-label">IDLE</span>
@@ -389,6 +408,7 @@
   const outcomeSuccess=$("#outcome-success"), outcomeFailure=$("#outcome-failure");
   const previewBtn=$("#preview-btn"), callBtn=$("#call-btn");
   const muteBtn=$("#mute-btn"), pauseBtn=$("#pause-btn"), actionRow=$("#action-row");
+  const livePromptSection=$("#live-prompt-section"), fLivePrompt=$("#f-live-prompt"), liveSendBtn=$("#live-send-btn");
   const notesSection=$("#notes-section");
   const timerEl=$("#timer"), sDot=$("#s-dot"), sLabel=$("#s-label"), kbdHint=$("#kbd-hint");
   const errBanner=$("#error-banner");
@@ -601,6 +621,13 @@ Rules:
     saveLog();
   }
 
+  function injectLivePrompt() {
+    const text=fLivePrompt.value.trim(); if(!text||dc?.readyState!=='open') return;
+    dc.send(JSON.stringify({type:'conversation.item.create',item:{type:'message',role:'user',content:[{type:'input_text',text:`[Private note — use this to answer the rep's question naturally: ${text}. Do not read this note aloud; just respond using the info.]`}]}}));
+    dc.send(JSON.stringify({type:'response.create'}));
+    fLivePrompt.value='';
+  }
+
   function updateLogNotes(notes) { const e=callLog.find(e=>e.id===currentLogId); if(e){e.notes=notes;saveLog();} }
 
   function updateLogOutcome(outcome) {
@@ -781,7 +808,7 @@ Rules:
         sendSessionUpdate(name,code,retailer,price,origPrice,fare,cancel,context);
         callState='active'; isMuted=false; isPaused=false;
         startLogEntry(code,name,retailer,price,origPrice,fVoice.value);
-        startTimer(); setStatus('listening'); actionRow.style.display='';
+        startTimer(); setStatus('listening'); actionRow.style.display=''; livePromptSection.style.display='';
         // Agent speaks first — introduce as the customer calling about a price match
         setTimeout(()=>{
           if(dc?.readyState!=='open') return;
@@ -812,7 +839,7 @@ Rules:
     isMuted=false; isPaused=false;
     muteBtn.textContent='🎤 MUTE'; muteBtn.classList.remove('muted');
     pauseBtn.textContent='⏸ PAUSE'; pauseBtn.classList.remove('paused');
-    actionRow.style.display='none';
+    actionRow.style.display='none'; livePromptSection.style.display='none'; fLivePrompt.value='';
     if (currentLogId) { notesSection.style.display=''; syncOutcomeUI(null); fNotes.focus(); }
     setStatus('idle'); lockFields(false);
   }
@@ -841,6 +868,9 @@ Rules:
 
   outcomeSuccess.addEventListener('click',()=>updateLogOutcome('success'));
   outcomeFailure.addEventListener('click',()=>updateLogOutcome('failure'));
+
+  liveSendBtn.addEventListener('click', injectLivePrompt);
+  fLivePrompt.addEventListener('keydown', e=>{ if(e.key==='Enter'){e.preventDefault();injectLivePrompt();} });
 
   clearBtn.addEventListener('click',()=>{
     feed.querySelectorAll('.transcript-line').forEach(el=>el.remove());
