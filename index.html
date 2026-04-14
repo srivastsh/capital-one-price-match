@@ -317,7 +317,7 @@
 <script>
   const OPENAI_API_KEY = "YOUR_OPENAI_API_KEY_HERE";
 
-  const $ = id => document.getElementById(id);
+  const $ = id => document.getElementById(id[0]==='#' ? id.slice(1) : id);
   const fCode=$("#f-code"), fName=$("#f-name"), fRetailer=$("#f-retailer"), fPrice=$("#f-price");
   const fVoice=$("#f-voice"), fContext=$("#f-context"), fNotes=$("#f-notes");
   const previewBtn=$("#preview-btn"), callBtn=$("#call-btn");
