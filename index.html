@@ -6,516 +6,191 @@
   <title>C1 Price Match</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap');
-
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --bg:      #0E0F11;
-      --surface: #151619;
-      --input:   #1A1B1F;
-      --border:  #2A2B30;
-      --text:    #E8E8EC;
-      --dim:     #8A8B92;
-      --muted:   #5A5B62;
-      --accent:  #00E5FF;
-      --yellow:  #FFD600;
-      --green:   #00E676;
-      --red:     #FF5252;
-      --mono: 'IBM Plex Mono', monospace;
-      --sans: 'DM Sans', sans-serif;
+      --bg:#0E0F11; --surface:#151619; --input:#1A1B1F; --border:#2A2B30;
+      --text:#E8E8EC; --dim:#8A8B92; --muted:#5A5B62;
+      --accent:#00E5FF; --yellow:#FFD600; --green:#00E676; --red:#FF5252;
+      --mono:'IBM Plex Mono',monospace; --sans:'DM Sans',sans-serif;
     }
+    html,body { height:100%; background:var(--bg); color:var(--text); font-family:var(--sans); font-size:14px; -webkit-font-smoothing:antialiased; }
+    body { display:flex; flex-direction:column; min-height:100vh; }
 
-    html, body {
-      height: 100%;
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--sans);
-      font-size: 14px;
-      -webkit-font-smoothing: antialiased;
+    /* Header */
+    .app-header { flex-shrink:0; display:flex; align-items:center; gap:16px; padding:13px 28px; border-bottom:1px solid var(--border); }
+    .logo-mark { font-family:var(--mono); font-size:11px; font-weight:500; letter-spacing:.12em; color:var(--accent); border:1px solid var(--accent); padding:3px 8px; }
+    .app-title { font-family:var(--sans); font-size:11px; font-weight:400; color:var(--dim); letter-spacing:.1em; text-transform:uppercase; }
+
+    /* Layout */
+    .app-body { flex:1; display:flex; overflow:hidden; min-height:0; }
+
+    /* Left panel */
+    .panel-left { width:420px; flex-shrink:0; border-right:1px solid var(--border); display:flex; flex-direction:column; padding:28px 24px; min-height:0; overflow-y:auto; }
+    .panel-left::-webkit-scrollbar { width:3px; }
+    .panel-left::-webkit-scrollbar-track { background:transparent; }
+    .panel-left::-webkit-scrollbar-thumb { background:var(--border); }
+    .section-label { font-family:var(--sans); font-size:10px; font-weight:500; letter-spacing:.14em; color:var(--muted); text-transform:uppercase; margin-bottom:18px; }
+    .fields-section { flex:1; }
+    .field-group { margin-bottom:14px; }
+    .field-group label { display:block; font-family:var(--sans); font-size:10px; font-weight:500; letter-spacing:.1em; color:var(--dim); text-transform:uppercase; margin-bottom:6px; }
+    .field-group input, .field-group select, .field-group textarea {
+      width:100%; background:var(--input); border:1px solid var(--border); color:var(--text);
+      font-family:var(--mono); outline:none; transition:border-color .15s;
     }
-
-    body {
-      display: flex;
-      flex-direction: column;
-      min-height: 100vh;
-    }
-
-    /* ── Header ────────────────────────────────────────────── */
-    .app-header {
-      flex-shrink: 0;
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      padding: 13px 28px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .logo-mark {
-      font-family: var(--mono);
-      font-size: 11px;
-      font-weight: 500;
-      letter-spacing: 0.12em;
-      color: var(--accent);
-      border: 1px solid var(--accent);
-      padding: 3px 8px;
-    }
-
-    .app-title {
-      font-family: var(--sans);
-      font-size: 11px;
-      font-weight: 400;
-      color: var(--dim);
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-    }
-
-    /* ── Body layout ───────────────────────────────────────── */
-    .app-body {
-      flex: 1;
-      display: flex;
-      overflow: hidden;
-      min-height: 0;
-    }
-
-    /* ── Left panel ─────────────────────────────────────────  */
-    .panel-left {
-      width: 420px;
-      flex-shrink: 0;
-      border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      padding: 28px 24px;
-      min-height: 0;
-      overflow-y: auto;
-    }
-
-    .panel-left::-webkit-scrollbar { width: 3px; }
-    .panel-left::-webkit-scrollbar-track { background: transparent; }
-    .panel-left::-webkit-scrollbar-thumb { background: var(--border); }
-
-    .section-label {
-      font-family: var(--sans);
-      font-size: 10px;
-      font-weight: 500;
-      letter-spacing: 0.14em;
-      color: var(--muted);
-      text-transform: uppercase;
-      margin-bottom: 18px;
-    }
-
-    .fields-section {
-      flex: 1;
-    }
-
-    .field-group {
-      margin-bottom: 14px;
-    }
-
-    .field-group label {
-      display: block;
-      font-family: var(--sans);
-      font-size: 10px;
-      font-weight: 500;
-      letter-spacing: 0.1em;
-      color: var(--dim);
-      text-transform: uppercase;
-      margin-bottom: 6px;
-    }
-
-    .field-group input {
-      width: 100%;
-      background: var(--input);
-      border: 1px solid var(--border);
-      color: var(--text);
-      font-family: var(--mono);
-      font-size: 13px;
-      font-weight: 400;
-      padding: 10px 12px;
-      outline: none;
-      transition: border-color 0.15s;
-      -webkit-appearance: none;
-    }
-
-    .field-group input:focus { border-color: var(--accent); }
-    .field-group input::placeholder { color: var(--muted); font-weight: 300; }
-    .field-group input:disabled { opacity: 0.45; cursor: not-allowed; }
-
-    .field-group textarea {
-      width: 100%;
-      background: var(--input);
-      border: 1px solid var(--border);
-      color: var(--text);
-      font-family: var(--mono);
-      font-size: 12px;
-      font-weight: 300;
-      padding: 10px 12px;
-      outline: none;
-      resize: vertical;
-      min-height: 72px;
-      line-height: 1.6;
-      transition: border-color 0.15s;
-    }
-
-    .field-group textarea:focus { border-color: var(--accent); }
-    .field-group textarea::placeholder { color: var(--muted); font-weight: 300; }
-    .field-group textarea:disabled { opacity: 0.45; cursor: not-allowed; }
-
-    /* Remove number input spinners */
+    .field-group input, .field-group select { font-size:13px; font-weight:400; padding:10px 12px; -webkit-appearance:none; }
+    .field-group textarea { font-size:12px; font-weight:300; padding:10px 12px; resize:vertical; min-height:72px; line-height:1.6; }
+    .field-group input:focus,.field-group select:focus,.field-group textarea:focus { border-color:var(--accent); }
+    .field-group input::placeholder,.field-group textarea::placeholder { color:var(--muted); font-weight:300; }
+    .field-group input:disabled,.field-group select:disabled,.field-group textarea:disabled { opacity:.45; cursor:not-allowed; }
     .field-group input[type=number]::-webkit-inner-spin-button,
-    .field-group input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
-    .field-group input[type=number] { -moz-appearance: textfield; }
-
-    .field-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-
-    /* ── Voice selector ─────────────────────────────────────  */
-    .voice-row {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 8px;
-      align-items: end;
-    }
-
+    .field-group input[type=number]::-webkit-outer-spin-button { -webkit-appearance:none; }
+    .field-group input[type=number] { -moz-appearance:textfield; }
     .field-group select {
-      width: 100%;
-      background: var(--input);
-      border: 1px solid var(--border);
-      color: var(--text);
-      font-family: var(--mono);
-      font-size: 13px;
-      font-weight: 400;
-      padding: 10px 12px;
-      outline: none;
-      cursor: pointer;
-      -webkit-appearance: none;
-      appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235A5B62'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 12px center;
-      padding-right: 30px;
-      transition: border-color 0.15s;
+      cursor:pointer; appearance:none;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235A5B62'/%3E%3C/svg%3E");
+      background-repeat:no-repeat; background-position:right 12px center; padding-right:30px;
     }
+    .field-group select option { background:var(--input); color:var(--text); }
+    .field-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
 
-    .field-group select:focus { border-color: var(--accent); }
-    .field-group select:disabled { opacity: 0.45; cursor: not-allowed; }
-    .field-group select option { background: var(--input); color: var(--text); }
-
+    /* Voice row */
+    .voice-row { display:grid; grid-template-columns:1fr auto; gap:8px; align-items:end; }
     .preview-btn {
-      height: 39px;
-      padding: 0 14px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      color: var(--dim);
-      font-family: var(--mono);
-      font-size: 11px;
-      font-weight: 400;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: color 0.15s, border-color 0.15s;
-      display: flex;
-      align-items: center;
-      gap: 6px;
+      height:39px; padding:0 14px; background:var(--surface); border:1px solid var(--border);
+      color:var(--dim); font-family:var(--mono); font-size:11px; letter-spacing:.08em;
+      text-transform:uppercase; cursor:pointer; white-space:nowrap;
+      transition:color .15s,border-color .15s; display:flex; align-items:center; gap:6px;
     }
+    .preview-btn:hover:not(:disabled) { color:var(--text); border-color:var(--dim); }
+    .preview-btn:disabled { opacity:.4; cursor:not-allowed; }
+    .preview-btn .play-icon { font-size:9px; }
+    .preview-btn.loading .play-icon { animation:spin .8s linear infinite; display:inline-block; }
+    @keyframes spin { to { transform:rotate(360deg); } }
 
-    .preview-btn:hover:not(:disabled) { color: var(--text); border-color: var(--dim); }
-    .preview-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .panel-divider { border:none; border-top:1px solid var(--border); margin:24px 0; }
 
-    .preview-btn .play-icon { font-size: 9px; }
-
-    .preview-btn.loading .play-icon { animation: spin 0.8s linear infinite; display: inline-block; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    .panel-divider {
-      border: none;
-      border-top: 1px solid var(--border);
-      margin: 24px 0;
-    }
-
-    /* ── Quick links ────────────────────────────────────────  */
-    .quick-links {
-      display: flex;
-      gap: 8px;
-      margin-top: 4px;
-    }
-
+    /* Quick links */
+    .quick-links { display:flex; gap:8px; margin-top:4px; }
     .quick-link {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      padding: 9px 11px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      font-family: var(--mono);
-      font-size: 11px;
-      font-weight: 400;
-      color: var(--dim);
-      text-decoration: none;
-      transition: color 0.15s, border-color 0.15s;
-      overflow: hidden;
+      flex:1; display:flex; align-items:center; gap:7px; padding:9px 11px;
+      background:var(--surface); border:1px solid var(--border); font-family:var(--mono);
+      font-size:11px; color:var(--dim); text-decoration:none;
+      transition:color .15s,border-color .15s; overflow:hidden;
     }
+    .quick-link:hover { color:var(--text); border-color:var(--dim); }
+    .quick-link .ql-icon { font-size:10px; flex-shrink:0; color:var(--muted); }
+    .quick-link .ql-text { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
-    .quick-link:hover { color: var(--text); border-color: var(--dim); }
+    /* Controls */
+    .controls-section { display:flex; flex-direction:column; gap:14px; }
+    .timer-row { display:flex; align-items:center; justify-content:space-between; }
+    .timer-display { font-family:var(--mono); font-size:30px; font-weight:300; color:var(--muted); letter-spacing:.04em; transition:color .3s; line-height:1; }
+    .timer-display.active { color:var(--accent); }
+    .call-btn { width:100%; padding:16px; font-family:var(--mono); font-size:12px; font-weight:500; letter-spacing:.18em; text-transform:uppercase; border:none; cursor:pointer; transition:background-color .2s,opacity .2s,color .2s; }
+    .call-btn.idle       { background:var(--accent); color:#000; }
+    .call-btn.connecting { background:var(--yellow);  color:#000; }
+    .call-btn.active     { background:var(--red);     color:#fff; }
+    .call-btn:disabled   { opacity:.45; cursor:not-allowed; }
 
-    .quick-link .ql-icon {
-      font-size: 10px;
-      flex-shrink: 0;
-      color: var(--muted);
+    /* Mute / Pause */
+    .action-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .action-btn {
+      padding:9px 0; font-family:var(--mono); font-size:11px; letter-spacing:.08em;
+      text-transform:uppercase; background:var(--surface); border:1px solid var(--border);
+      color:var(--dim); cursor:pointer; transition:color .15s,border-color .15s,background .15s;
     }
+    .action-btn:hover:not(:disabled) { color:var(--text); border-color:var(--dim); }
+    .action-btn.muted  { border-color:var(--red);    color:var(--red);    background:rgba(255,82,82,.08); }
+    .action-btn.paused { border-color:var(--yellow); color:var(--yellow); background:rgba(255,214,0,.08); }
+    .action-btn:disabled { opacity:.35; cursor:not-allowed; }
 
-    .quick-link .ql-text {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+    /* Status */
+    .status-bar { display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--surface); border:1px solid var(--border); }
+    .status-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+    .status-dot.idle       { background:var(--muted); }
+    .status-dot.connecting { background:var(--yellow); animation:pulse .75s ease-in-out infinite; }
+    .status-dot.listening  { background:var(--accent); animation:pulse 2.2s ease-in-out infinite; }
+    .status-dot.speaking   { background:var(--green);  animation:pulse .45s ease-in-out infinite; }
+    .status-dot.muted      { background:var(--red); }
+    .status-dot.paused     { background:var(--yellow); }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.3;transform:scale(.75)} }
+    .status-label { font-family:var(--mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase; transition:color .2s; flex:1; }
+    .status-label.idle       { color:var(--muted); }
+    .status-label.connecting { color:var(--yellow); }
+    .status-label.listening  { color:var(--accent); }
+    .status-label.speaking   { color:var(--green); }
+    .status-label.muted      { color:var(--red); }
+    .status-label.paused     { color:var(--yellow); }
+    .kbd-hint { font-family:var(--mono); font-size:9px; color:var(--muted); letter-spacing:.03em; white-space:nowrap; }
+
+    /* Session notes */
+    .notes-section { display:flex; flex-direction:column; gap:6px; }
+    .notes-label { font-family:var(--sans); font-size:10px; font-weight:500; letter-spacing:.1em; color:var(--dim); text-transform:uppercase; }
+    .notes-section textarea { width:100%; background:var(--input); border:1px solid var(--border); color:var(--text); font-family:var(--mono); font-size:11px; font-weight:300; padding:8px 10px; outline:none; resize:none; height:62px; line-height:1.6; transition:border-color .15s; }
+    .notes-section textarea:focus { border-color:var(--accent); }
+    .notes-section textarea::placeholder { color:var(--muted); }
+
+    /* Error */
+    .error-banner { display:none; padding:10px 12px; background:rgba(255,82,82,.08); border:1px solid rgba(255,82,82,.35); color:var(--red); font-family:var(--mono); font-size:11px; font-weight:300; line-height:1.6; }
+    .error-banner.visible { display:block; }
+
+    /* Right panel */
+    .panel-right { flex:1; display:flex; flex-direction:column; min-width:0; min-height:0; }
+    .transcript-header { flex-shrink:0; display:flex; align-items:stretch; justify-content:space-between; border-bottom:1px solid var(--border); height:44px; padding-right:16px; }
+    .tab-group { display:flex; align-items:stretch; }
+    .tab-btn {
+      height:100%; padding:0 16px; font-family:var(--mono); font-size:10px; font-weight:500;
+      letter-spacing:.12em; text-transform:uppercase; background:none; border:none;
+      border-bottom:2px solid transparent; color:var(--muted); cursor:pointer;
+      transition:color .15s,border-color .15s; display:flex; align-items:center; gap:7px;
     }
+    .tab-btn.active { color:var(--text); border-bottom-color:var(--accent); }
+    .tab-btn:hover:not(.active) { color:var(--dim); }
+    .tab-badge { font-family:var(--mono); font-size:9px; background:var(--surface); border:1px solid var(--border); color:var(--muted); padding:1px 5px; transition:color .2s,border-color .2s; }
+    .tab-badge.lit { border-color:var(--accent); color:var(--accent); }
+    .header-right { display:flex; align-items:center; gap:8px; }
+    .line-count { font-family:var(--mono); font-size:10px; color:var(--muted); background:var(--surface); border:1px solid var(--border); padding:2px 7px; opacity:0; transition:opacity .2s; }
+    .line-count.visible { opacity:1; }
+    .clear-btn { font-family:var(--mono); font-size:10px; letter-spacing:.1em; color:var(--muted); background:none; border:1px solid var(--border); padding:5px 11px; cursor:pointer; text-transform:uppercase; transition:color .15s,border-color .15s; }
+    .clear-btn:hover { color:var(--text); border-color:var(--dim); }
 
-    /* ── Controls ───────────────────────────────────────────  */
-    .controls-section {
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-    }
+    /* Transcript feed */
+    .transcript-feed { flex:1; overflow-y:auto; padding:20px 24px; display:flex; flex-direction:column; min-height:0; }
+    .transcript-feed::-webkit-scrollbar { width:3px; }
+    .transcript-feed::-webkit-scrollbar-track { background:transparent; }
+    .transcript-feed::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+    .transcript-feed::-webkit-scrollbar-thumb:hover { background:var(--dim); }
+    .empty-state { margin:auto; text-align:center; font-family:var(--mono); font-size:12px; font-weight:300; color:var(--muted); line-height:2; }
+    .transcript-line { padding:10px 0; border-bottom:1px solid rgba(42,43,48,.6); animation:line-in .18s ease-out forwards; opacity:0; transform:translateY(5px); }
+    @keyframes line-in { to { opacity:1; transform:translateY(0); } }
+    .line-meta { display:flex; align-items:center; gap:8px; margin-bottom:4px; }
+    .role-tag { font-family:var(--mono); font-size:10px; font-weight:500; letter-spacing:.1em; text-transform:uppercase; }
+    .role-tag.agent { color:var(--dim); }
+    .role-tag.bot   { color:var(--accent); }
+    .line-time { font-family:var(--mono); font-size:9px; color:var(--muted); }
+    .line-text { font-family:var(--mono); font-size:13px; font-weight:300; color:var(--text); line-height:1.65; }
+    .line-text.bot-text { color:rgba(0,229,255,.82); }
+    .cursor { display:inline-block; animation:blink 1s step-end infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
 
-    .timer-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .timer-display {
-      font-family: var(--mono);
-      font-size: 30px;
-      font-weight: 300;
-      color: var(--muted);
-      letter-spacing: 0.04em;
-      transition: color 0.3s;
-      line-height: 1;
-    }
-
-    .timer-display.active { color: var(--accent); }
-
-    .call-btn {
-      width: 100%;
-      padding: 16px;
-      font-family: var(--mono);
-      font-size: 12px;
-      font-weight: 500;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      border: none;
-      cursor: pointer;
-      transition: background-color 0.2s, opacity 0.2s, color 0.2s;
-    }
-
-    .call-btn.idle       { background: var(--accent); color: #000; }
-    .call-btn.connecting { background: var(--yellow); color: #000; }
-    .call-btn.active     { background: var(--red); color: #fff; }
-    .call-btn:disabled   { opacity: 0.45; cursor: not-allowed; }
-
-    /* ── Status bar ─────────────────────────────────────────  */
-    .status-bar {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 12px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-    }
-
-    .status-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-
-    .status-dot.idle        { background: var(--muted); }
-    .status-dot.connecting  { background: var(--yellow); animation: pulse 0.75s ease-in-out infinite; }
-    .status-dot.listening   { background: var(--accent); animation: pulse 2.2s ease-in-out infinite; }
-    .status-dot.speaking    { background: var(--green);  animation: pulse 0.45s ease-in-out infinite; }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50%       { opacity: 0.3; transform: scale(0.75); }
-    }
-
-    .status-label {
-      font-family: var(--mono);
-      font-size: 11px;
-      font-weight: 400;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      transition: color 0.2s;
-    }
-
-    .status-label.idle        { color: var(--muted); }
-    .status-label.connecting  { color: var(--yellow); }
-    .status-label.listening   { color: var(--accent); }
-    .status-label.speaking    { color: var(--green); }
-
-    /* ── Error banner ───────────────────────────────────────  */
-    .error-banner {
-      display: none;
-      padding: 10px 12px;
-      background: rgba(255, 82, 82, 0.08);
-      border: 1px solid rgba(255, 82, 82, 0.35);
-      color: var(--red);
-      font-family: var(--mono);
-      font-size: 11px;
-      font-weight: 300;
-      line-height: 1.6;
-    }
-
-    .error-banner.visible { display: block; }
-
-    /* ── Right panel ────────────────────────────────────────  */
-    .panel-right {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      min-width: 0;
-      min-height: 0;
-    }
-
-    .transcript-header {
-      flex-shrink: 0;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 13px 24px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .transcript-header-left {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .transcript-title {
-      font-family: var(--sans);
-      font-size: 10px;
-      font-weight: 500;
-      letter-spacing: 0.14em;
-      color: var(--muted);
-      text-transform: uppercase;
-    }
-
-    .line-count {
-      font-family: var(--mono);
-      font-size: 10px;
-      color: var(--muted);
-      background: var(--surface);
-      border: 1px solid var(--border);
-      padding: 2px 7px;
-      opacity: 0;
-      transition: opacity 0.2s;
-    }
-
-    .line-count.visible { opacity: 1; }
-
-    .clear-btn {
-      font-family: var(--mono);
-      font-size: 10px;
-      font-weight: 400;
-      letter-spacing: 0.1em;
-      color: var(--muted);
-      background: none;
-      border: 1px solid var(--border);
-      padding: 5px 11px;
-      cursor: pointer;
-      text-transform: uppercase;
-      transition: color 0.15s, border-color 0.15s;
-    }
-
-    .clear-btn:hover { color: var(--text); border-color: var(--dim); }
-
-    /* ── Transcript feed ────────────────────────────────────  */
-    .transcript-feed {
-      flex: 1;
-      overflow-y: auto;
-      padding: 20px 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 0;
-      min-height: 0;
-    }
-
-    .transcript-feed::-webkit-scrollbar { width: 3px; }
-    .transcript-feed::-webkit-scrollbar-track { background: transparent; }
-    .transcript-feed::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-    .transcript-feed::-webkit-scrollbar-thumb:hover { background: var(--dim); }
-
-    .empty-state {
-      margin: auto;
-      text-align: center;
-      font-family: var(--mono);
-      font-size: 12px;
-      font-weight: 300;
-      color: var(--muted);
-      line-height: 2;
-    }
-
-    .transcript-line {
-      padding: 10px 0;
-      border-bottom: 1px solid rgba(42, 43, 48, 0.6);
-      animation: line-in 0.18s ease-out forwards;
-      opacity: 0;
-      transform: translateY(5px);
-    }
-
-    @keyframes line-in {
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .line-meta {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 4px;
-    }
-
-    .role-tag {
-      font-family: var(--mono);
-      font-size: 10px;
-      font-weight: 500;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-    }
-
-    .role-tag.agent { color: var(--dim); }
-    .role-tag.bot   { color: var(--accent); }
-
-    .line-time {
-      font-family: var(--mono);
-      font-size: 9px;
-      color: var(--muted);
-    }
-
-    .line-text {
-      font-family: var(--mono);
-      font-size: 13px;
-      font-weight: 300;
-      color: var(--text);
-      line-height: 1.65;
-    }
-
-    .line-text.bot-text { color: rgba(0, 229, 255, 0.82); }
-
-    .cursor {
-      display: inline-block;
-      animation: blink 1s step-end infinite;
-    }
-
-    @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50%       { opacity: 0; }
-    }
+    /* Call log */
+    .log-panel { flex:1; overflow-y:auto; padding:20px 24px; display:flex; flex-direction:column; gap:10px; min-height:0; }
+    .log-panel::-webkit-scrollbar { width:3px; }
+    .log-panel::-webkit-scrollbar-track { background:transparent; }
+    .log-panel::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+    .log-empty { margin:auto; text-align:center; font-family:var(--mono); font-size:12px; font-weight:300; color:var(--muted); line-height:2; }
+    .log-entry { background:var(--surface); border:1px solid var(--border); padding:12px 14px; position:relative; animation:line-in .18s ease-out forwards; opacity:0; transform:translateY(4px); }
+    .log-entry-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:9px; }
+    .log-entry-dt  { font-family:var(--mono); font-size:10px; color:var(--dim); }
+    .log-entry-dur { font-family:var(--mono); font-size:10px; color:var(--muted); }
+    .log-entry-fields { display:flex; flex-wrap:wrap; gap:5px 16px; }
+    .log-field { font-family:var(--mono); font-size:11px; }
+    .log-field-lbl { color:var(--muted); font-size:9px; letter-spacing:.1em; text-transform:uppercase; margin-right:4px; }
+    .log-field-val { color:var(--text); }
+    .log-entry-notes { font-family:var(--mono); font-size:11px; font-weight:300; color:var(--dim); font-style:italic; border-top:1px solid var(--border); padding-top:8px; margin-top:8px; line-height:1.55; white-space:pre-wrap; }
+    .log-del { position:absolute; top:9px; right:10px; background:none; border:none; color:var(--muted); font-size:14px; cursor:pointer; opacity:0; transition:opacity .15s,color .15s; padding:1px 4px; line-height:1; }
+    .log-entry:hover .log-del { opacity:1; }
+    .log-del:hover { color:var(--red); }
   </style>
 </head>
 <body>
@@ -527,21 +202,17 @@
 
 <div class="app-body">
 
-  <!-- ── Left panel ─────────────────────────────────── -->
   <aside class="panel-left">
     <div class="fields-section">
       <div class="section-label">Call Details</div>
-
       <div class="field-group">
         <label for="f-code">Confirmation Code</label>
         <input id="f-code" type="text" placeholder="e.g. AB12CD" autocomplete="off" spellcheck="false">
       </div>
-
       <div class="field-group">
         <label for="f-name">Full Name</label>
         <input id="f-name" type="text" placeholder="e.g. Jane Smith" autocomplete="off" spellcheck="false">
       </div>
-
       <div class="field-row">
         <div class="field-group">
           <label for="f-retailer">Retailer / Where Found</label>
@@ -552,7 +223,6 @@
           <input id="f-price" type="number" placeholder="0.00" min="0" step="0.01" autocomplete="off">
         </div>
       </div>
-
       <div class="voice-row">
         <div class="field-group" style="margin-bottom:0">
           <label for="f-voice">Voice</label>
@@ -575,17 +245,15 @@
 
     <div class="field-group" style="margin-top:14px">
       <label for="f-context">Additional Context <span style="color:var(--muted);font-weight:300;letter-spacing:0">(optional)</span></label>
-      <textarea id="f-context" placeholder="e.g. Booking is for 2 passengers. The agent may ask for the last 4 digits of my card: 1234." spellcheck="false"></textarea>
+      <textarea id="f-context" placeholder="e.g. Booking is for 2 passengers. Agent may ask for last 4 digits of card: 1234." spellcheck="false"></textarea>
     </div>
 
     <div class="quick-links">
       <a class="quick-link" href="https://travel.capitalone.com/trips/" target="_blank" rel="noopener">
-        <span class="ql-icon">↗</span>
-        <span class="ql-text">Capital One Travel</span>
+        <span class="ql-icon">↗</span><span class="ql-text">Capital One Travel</span>
       </a>
       <a class="quick-link" href="tel:844-422-6922">
-        <span class="ql-icon">📞</span>
-        <span class="ql-text">Price Match Call Center</span>
+        <span class="ql-icon">📞</span><span class="ql-text">Price Match Call Center</span>
       </a>
     </div>
 
@@ -599,28 +267,46 @@
 
       <button class="call-btn idle" id="call-btn">START CALL</button>
 
+      <div class="action-row" id="action-row" style="display:none">
+        <button class="action-btn" id="mute-btn">🎤 MUTE</button>
+        <button class="action-btn" id="pause-btn">⏸ PAUSE</button>
+      </div>
+
       <div class="status-bar">
         <div class="status-dot idle" id="s-dot"></div>
         <span class="status-label idle" id="s-label">IDLE</span>
+        <span class="kbd-hint" id="kbd-hint">↵ start</span>
+      </div>
+
+      <div class="notes-section" id="notes-section" style="display:none">
+        <span class="notes-label">Session Notes</span>
+        <textarea id="f-notes" placeholder="Outcome, reference number, follow-up..."></textarea>
       </div>
 
       <div class="error-banner" id="error-banner"></div>
     </div>
   </aside>
 
-  <!-- ── Right panel ────────────────────────────────── -->
   <main class="panel-right">
     <div class="transcript-header">
-      <div class="transcript-header-left">
-        <span class="transcript-title">Live Transcript</span>
-        <span class="line-count" id="line-count">0 lines</span>
+      <div class="tab-group">
+        <button class="tab-btn active" id="tab-t-btn">TRANSCRIPT</button>
+        <button class="tab-btn" id="tab-l-btn">LOG <span class="tab-badge" id="log-badge">0</span></button>
       </div>
-      <button class="clear-btn" id="clear-btn">Clear</button>
+      <div class="header-right">
+        <span class="line-count" id="line-count">0 lines</span>
+        <button class="clear-btn" id="clear-btn">Clear</button>
+      </div>
     </div>
+
     <div class="transcript-feed" id="feed">
       <div class="empty-state" id="empty-state">
         Transcript will appear here<br>once the call begins
       </div>
+    </div>
+
+    <div class="log-panel" id="log-panel" style="display:none">
+      <div class="log-empty" id="log-empty">No calls logged yet</div>
     </div>
   </main>
 
@@ -629,207 +315,137 @@
 <audio id="remote-audio" autoplay></audio>
 
 <script>
-  // ─────────────────────────────────────────────────────────
-  //  CONFIG — paste your key here
-  // ─────────────────────────────────────────────────────────
   const OPENAI_API_KEY = "YOUR_OPENAI_API_KEY_HERE";
 
-  // ── DOM refs ──────────────────────────────────────────────
   const $ = id => document.getElementById(id);
-  const fCode      = $('f-code');
-  const fName      = $('f-name');
-  const fRetailer  = $('f-retailer');
-  const fPrice     = $('f-price');
-  const fVoice     = $('f-voice');
-  const fContext   = $('f-context');
-  const previewBtn = $('preview-btn');
-  const callBtn    = $('call-btn');
-  const timerEl    = $('timer');
-  const sDot       = $('s-dot');
-  const sLabel     = $('s-label');
-  const errBanner  = $('error-banner');
-  const feed       = $('feed');
-  const emptyState = $('empty-state');
-  const lineCount  = $('line-count');
-  const clearBtn   = $('clear-btn');
-  const audioEl    = $('remote-audio');
+  const fCode=$("#f-code"), fName=$("#f-name"), fRetailer=$("#f-retailer"), fPrice=$("#f-price");
+  const fVoice=$("#f-voice"), fContext=$("#f-context"), fNotes=$("#f-notes");
+  const previewBtn=$("#preview-btn"), callBtn=$("#call-btn");
+  const muteBtn=$("#mute-btn"), pauseBtn=$("#pause-btn"), actionRow=$("#action-row");
+  const notesSection=$("#notes-section");
+  const timerEl=$("#timer"), sDot=$("#s-dot"), sLabel=$("#s-label"), kbdHint=$("#kbd-hint");
+  const errBanner=$("#error-banner");
+  const feed=$("#feed"), emptyState=$("#empty-state"), lineCount=$("#line-count"), clearBtn=$("#clear-btn");
+  const audioEl=$("#remote-audio");
+  const tabTBtn=$("#tab-t-btn"), tabLBtn=$("#tab-l-btn"), logBadge=$("#log-badge");
+  const logPanel=$("#log-panel"), logEmpty=$("#log-empty");
 
-  // ── Runtime state ─────────────────────────────────────────
-  let pc           = null;   // RTCPeerConnection
-  let dc           = null;   // DataChannel
-  let localStream  = null;
-  let timerIv      = null;
-  let timerSecs    = 0;
-  let callState    = 'idle'; // idle | connecting | active
-  let lineNum      = 0;
+  let pc=null, dc=null, localStream=null;
+  let timerIv=null, timerSecs=0;
+  let callState='idle';
+  let isMuted=false, isPaused=false;
+  let lineNum=0, botItemId=null, botTextEl=null;
+  let callLog=JSON.parse(localStorage.getItem('c1_call_log')||'[]');
+  let currentLogId=null;
 
-  // Bot streaming line
-  let botItemId    = null;
-  let botTextEl    = null;
-
-  // ── Status ────────────────────────────────────────────────
   const STATES = {
-    idle:       { dot: 'idle',       label: 'IDLE',        btn: 'idle',       btnTxt: 'START CALL',    disabled: false },
-    connecting: { dot: 'connecting', label: 'CONNECTING',  btn: 'connecting', btnTxt: 'CONNECTING...', disabled: true  },
-    listening:  { dot: 'listening',  label: 'LISTENING',   btn: 'active',     btnTxt: 'END CALL',      disabled: false },
-    speaking:   { dot: 'speaking',   label: 'SPEAKING',    btn: 'active',     btnTxt: 'END CALL',      disabled: false },
+    idle:       {dot:'idle',       label:'IDLE',        btn:'idle',       txt:'START CALL',    dis:false, hint:'↵ start'},
+    connecting: {dot:'connecting', label:'CONNECTING',  btn:'connecting', txt:'CONNECTING...', dis:true,  hint:''},
+    listening:  {dot:'listening',  label:'LISTENING',   btn:'active',     txt:'END CALL',      dis:false, hint:'↵ end  ·  space mute'},
+    speaking:   {dot:'speaking',   label:'SPEAKING',    btn:'active',     txt:'END CALL',      dis:false, hint:'↵ end  ·  space mute'},
+    muted:      {dot:'muted',      label:'MUTED',       btn:'active',     txt:'END CALL',      dis:false, hint:'↵ end  ·  space unmute'},
+    paused:     {dot:'paused',     label:'PAUSED',      btn:'active',     txt:'END CALL',      dis:false, hint:'↵ end  ·  space resume'},
   };
 
   function setStatus(state) {
     const s = STATES[state];
-    sDot.className    = `status-dot ${s.dot}`;
-    sLabel.className  = `status-label ${s.dot}`;
+    sDot.className = `status-dot ${s.dot}`;
+    sLabel.className = `status-label ${s.dot}`;
     sLabel.textContent = s.label;
     callBtn.className = `call-btn ${s.btn}`;
-    callBtn.textContent = s.btnTxt;
-    callBtn.disabled  = s.disabled;
+    callBtn.textContent = s.txt;
+    callBtn.disabled = s.dis;
+    kbdHint.textContent = s.hint;
   }
 
-  function showError(msg) {
-    errBanner.textContent = msg;
-    errBanner.classList.add('visible');
-  }
+  function showError(msg) { errBanner.textContent=msg; errBanner.classList.add('visible'); }
+  function clearError() { errBanner.classList.remove('visible'); }
 
-  function clearError() {
-    errBanner.classList.remove('visible');
-  }
-
-  // ── Timer ─────────────────────────────────────────────────
   function startTimer() {
-    timerSecs = 0;
-    timerEl.classList.add('active');
+    timerSecs=0; timerEl.classList.add('active');
     timerIv = setInterval(() => {
       timerSecs++;
-      const m = String(Math.floor(timerSecs / 60)).padStart(2, '0');
-      const s = String(timerSecs % 60).padStart(2, '0');
-      timerEl.textContent = `${m}:${s}`;
+      timerEl.textContent = `${String(Math.floor(timerSecs/60)).padStart(2,'0')}:${String(timerSecs%60).padStart(2,'0')}`;
     }, 1000);
   }
+  function stopTimer() { clearInterval(timerIv); timerIv=null; timerEl.textContent='00:00'; timerEl.classList.remove('active'); }
 
-  function stopTimer() {
-    clearInterval(timerIv);
-    timerIv = null;
-    timerEl.textContent = '00:00';
-    timerEl.classList.remove('active');
-  }
-
-  // ── Transcript ────────────────────────────────────────────
-  function timestamp() {
-    return new Date().toTimeString().slice(0, 8);
-  }
+  function ts() { return new Date().toTimeString().slice(0,8); }
 
   function addLine(role, text, streaming) {
-    emptyState.style.display = 'none';
+    emptyState.style.display='none';
     lineNum++;
-    lineCount.textContent = `${lineNum} line${lineNum !== 1 ? 's' : ''}`;
+    lineCount.textContent = `${lineNum} line${lineNum!==1?'s':''}`;
     lineCount.classList.add('visible');
-
-    const wrap = document.createElement('div');
-    wrap.className = 'transcript-line';
-
-    const meta = document.createElement('div');
-    meta.className = 'line-meta';
-
-    const tag = document.createElement('span');
-    tag.className = `role-tag ${role}`;
-    tag.textContent = role.toUpperCase();
-
-    const ts = document.createElement('span');
-    ts.className = 'line-time';
-    ts.textContent = timestamp();
-
-    meta.appendChild(tag);
-    meta.appendChild(ts);
-
-    const txt = document.createElement('div');
-    txt.className = `line-text${role === 'bot' ? ' bot-text' : ''}`;
-
-    if (streaming) {
-      txt.textContent = text;
-      const cur = document.createElement('span');
-      cur.className = 'cursor';
-      cur.textContent = '▌';
-      txt.appendChild(cur);
-    } else {
-      txt.textContent = text;
-    }
-
-    wrap.appendChild(meta);
-    wrap.appendChild(txt);
-    feed.appendChild(wrap);
-    feed.scrollTop = feed.scrollHeight;
-
+    const wrap=document.createElement('div'); wrap.className='transcript-line';
+    const meta=document.createElement('div'); meta.className='line-meta';
+    const tag=document.createElement('span'); tag.className=`role-tag ${role}`; tag.textContent=role.toUpperCase();
+    const time=document.createElement('span'); time.className='line-time'; time.textContent=ts();
+    meta.appendChild(tag); meta.appendChild(time);
+    const txt=document.createElement('div'); txt.className=`line-text${role==='bot'?' bot-text':''}`;
+    txt.textContent=text;
+    if (streaming) { const c=document.createElement('span'); c.className='cursor'; c.textContent='▌'; txt.appendChild(c); }
+    wrap.appendChild(meta); wrap.appendChild(txt);
+    feed.appendChild(wrap); feed.scrollTop=feed.scrollHeight;
     return txt;
   }
 
   function appendBotDelta(itemId, delta) {
     if (!delta) return;
-
-    if (botItemId !== itemId) {
-      botItemId = itemId;
-      botTextEl = addLine('bot', delta, true);
-    } else if (botTextEl) {
-      const cur = botTextEl.querySelector('.cursor');
-      if (cur) cur.remove();
-      botTextEl.textContent += delta;
-      const cur2 = document.createElement('span');
-      cur2.className = 'cursor';
-      cur2.textContent = '▌';
-      botTextEl.appendChild(cur2);
-      feed.scrollTop = feed.scrollHeight;
+    if (botItemId!==itemId) { botItemId=itemId; botTextEl=addLine('bot',delta,true); }
+    else if (botTextEl) {
+      const c=botTextEl.querySelector('.cursor'); if(c) c.remove();
+      botTextEl.textContent+=delta;
+      const c2=document.createElement('span'); c2.className='cursor'; c2.textContent='▌';
+      botTextEl.appendChild(c2); feed.scrollTop=feed.scrollHeight;
     }
   }
 
   function finalizeBotLine() {
-    if (botTextEl) {
-      const cur = botTextEl.querySelector('.cursor');
-      if (cur) cur.remove();
-    }
-    botTextEl = null;
-    botItemId = null;
+    if (botTextEl) { const c=botTextEl.querySelector('.cursor'); if(c) c.remove(); }
+    botTextEl=null; botItemId=null;
   }
 
-  // ── DataChannel event handler ─────────────────────────────
   function onServerEvent(ev) {
-    let msg;
-    try { msg = JSON.parse(ev.data); } catch { return; }
-
-    switch (msg.type) {
-      case 'response.audio_transcript.delta':
-        appendBotDelta(msg.item_id, msg.delta || '');
-        break;
-
-      case 'response.audio_transcript.done':
-        finalizeBotLine();
-        break;
-
+    let msg; try { msg=JSON.parse(ev.data); } catch { return; }
+    switch(msg.type) {
+      case 'response.audio_transcript.delta':    appendBotDelta(msg.item_id, msg.delta||''); break;
+      case 'response.audio_transcript.done':     finalizeBotLine(); break;
       case 'conversation.item.input_audio_transcription.completed': {
-        const t = (msg.transcript || '').trim();
-        if (t) addLine('agent', t, false);
-        break;
+        const t=(msg.transcript||'').trim(); if(t) addLine('agent',t,false); break;
       }
-
-      case 'input_audio_buffer.speech_started':
-        setStatus('listening');
-        break;
-
+      case 'input_audio_buffer.speech_started':  if(!isMuted&&!isPaused) setStatus('listening'); break;
       case 'response.created':
-      case 'response.audio.delta':
-        setStatus('speaking');
-        break;
-
-      case 'response.done':
-        setStatus('listening');
-        break;
-
-      case 'error':
-        showError(`API error: ${msg.error?.message || 'unknown'}`);
-        break;
+      case 'response.audio.delta':               if(!isMuted&&!isPaused) setStatus('speaking'); break;
+      case 'response.done':                      if(!isMuted&&!isPaused) setStatus('listening'); break;
+      case 'error':                              showError(`API error: ${msg.error?.message||'unknown'}`); break;
     }
   }
 
-  // ── System prompt ─────────────────────────────────────────
-  function buildSystemPrompt(name, code, retailer, price, context) {
+  function setMic(on) { localStream?.getAudioTracks().forEach(t => t.enabled=on); }
+
+  function toggleMute() {
+    if (callState!=='active') return;
+    if (isPaused) { isPaused=false; pauseBtn.textContent='⏸ PAUSE'; pauseBtn.classList.remove('paused'); }
+    isMuted=!isMuted;
+    setMic(!isMuted);
+    muteBtn.textContent = isMuted?'🎤 UNMUTE':'🎤 MUTE';
+    muteBtn.classList.toggle('muted', isMuted);
+    setStatus(isMuted?'muted':'listening');
+  }
+
+  function togglePause() {
+    if (callState!=='active') return;
+    if (isMuted) { isMuted=false; muteBtn.textContent='🎤 MUTE'; muteBtn.classList.remove('muted'); }
+    isPaused=!isPaused;
+    setMic(!isPaused);
+    if (isPaused && dc?.readyState==='open') dc.send(JSON.stringify({type:'input_audio_buffer.clear'}));
+    pauseBtn.textContent = isPaused?'⏸ RESUME':'⏸ PAUSE';
+    pauseBtn.classList.toggle('paused', isPaused);
+    setStatus(isPaused?'paused':'listening');
+  }
+
+  function buildPrompt(name, code, retailer, price, context) {
     const lines = [
       `You are handling a Capital One travel price match call on behalf of ${name}.`,
       `You will be asked for: confirmation code (${code}), full name (${name}), where the lower price was found (${retailer}), and the price found ($${price}).`,
@@ -843,221 +459,186 @@
   }
 
   function sendSessionUpdate(name, code, retailer, price, context) {
-    const payload = {
-      type: 'session.update',
-      session: {
-        instructions: buildSystemPrompt(name, code, retailer, price, context),
-        input_audio_transcription: { model: 'whisper-1' },
-        turn_detection: { type: 'server_vad' },
-      },
+    dc.send(JSON.stringify({
+      type:'session.update',
+      session:{ instructions:buildPrompt(name,code,retailer,price,context), input_audio_transcription:{model:'whisper-1'}, turn_detection:{type:'server_vad'} }
+    }));
+  }
+
+  const formFields=[fCode,fName,fRetailer,fPrice,fVoice,fContext];
+  function lockFields(v) { formFields.forEach(f=>f.disabled=v); previewBtn.disabled=v; }
+
+  function saveLog() {
+    if (callLog.length>50) callLog.length=50;
+    localStorage.setItem('c1_call_log', JSON.stringify(callLog));
+    updateBadge();
+  }
+  function updateBadge() { logBadge.textContent=callLog.length; logBadge.classList.toggle('lit',callLog.length>0); }
+
+  function startLogEntry(code, name, retailer, price, voice) {
+    const entry = {
+      id:Date.now(),
+      date:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
+      time:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
+      duration:'--:--', code, name, retailer, price, voice, notes:''
     };
-    dc.send(JSON.stringify(payload));
+    currentLogId=entry.id; callLog.unshift(entry); saveLog();
   }
 
-  // ── Fields helpers ────────────────────────────────────────
-  const fields = [fCode, fName, fRetailer, fPrice, fVoice, fContext];
-
-  function lockFields(v) {
-    fields.forEach(f => f.disabled = v);
-    previewBtn.disabled = v;
+  function finalizeLogEntry() {
+    const e=callLog.find(e=>e.id===currentLogId); if(!e) return;
+    e.duration=`${String(Math.floor(timerSecs/60)).padStart(2,'0')}:${String(timerSecs%60).padStart(2,'0')}`;
+    saveLog();
   }
 
-  // ── Voice preview ─────────────────────────────────────────
-  let previewAudio = null;
+  function updateLogNotes(notes) { const e=callLog.find(e=>e.id===currentLogId); if(e){e.notes=notes;saveLog();} }
 
-  previewBtn.addEventListener('click', async () => {
-    // Stop any in-progress preview
-    if (previewAudio) {
-      previewAudio.pause();
-      previewAudio = null;
-    }
+  function deleteLogEntry(id) { callLog=callLog.filter(e=>e.id!==id); saveLog(); renderLog(); }
 
-    const voice = fVoice.value;
-    previewBtn.disabled = true;
-    previewBtn.classList.add('loading');
-    previewBtn.querySelector('.play-icon').textContent = '↻';
-
-    try {
-      const res = await fetch('https://api.openai.com/v1/audio/speech', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${OPENAI_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'tts-1',
-          voice,
-          input: `Hi, this is ${fName.value.trim() || 'a customer'} calling about a price match on a recent booking.`,
-          speed: 1.0,
-        }),
+  function renderLog() {
+    logPanel.querySelectorAll('.log-entry').forEach(el=>el.remove());
+    if (callLog.length===0) { logEmpty.style.display=''; return; }
+    logEmpty.style.display='none';
+    callLog.forEach(entry => {
+      const el=document.createElement('div'); el.className='log-entry';
+      const del=document.createElement('button'); del.className='log-del'; del.title='Delete'; del.textContent='×';
+      del.addEventListener('click',()=>deleteLogEntry(entry.id));
+      const top=document.createElement('div'); top.className='log-entry-top';
+      const dt=document.createElement('span'); dt.className='log-entry-dt'; dt.textContent=`${entry.date} · ${entry.time}`;
+      const dur=document.createElement('span'); dur.className='log-entry-dur'; dur.textContent=entry.duration;
+      top.appendChild(dt); top.appendChild(dur);
+      const fields=document.createElement('div'); fields.className='log-entry-fields';
+      [['Code',entry.code],['Name',entry.name],['Retailer',entry.retailer],['Price',`$${entry.price}`],['Voice',entry.voice]].forEach(([l,v])=>{
+        const f=document.createElement('span'); f.className='log-field';
+        const lbl=document.createElement('span'); lbl.className='log-field-lbl'; lbl.textContent=l;
+        const val=document.createElement('span'); val.className='log-field-val'; val.textContent=v;
+        f.appendChild(lbl); f.appendChild(val); fields.appendChild(f);
       });
+      el.appendChild(del); el.appendChild(top); el.appendChild(fields);
+      if (entry.notes) { const n=document.createElement('div'); n.className='log-entry-notes'; n.textContent=entry.notes; el.appendChild(n); }
+      logPanel.appendChild(el);
+    });
+  }
 
+  function switchTab(tab) {
+    const t=tab==='transcript';
+    tabTBtn.classList.toggle('active',t); tabLBtn.classList.toggle('active',!t);
+    feed.style.display=t?'':'none'; logPanel.style.display=t?'none':'';
+    if(!t) renderLog();
+  }
+  tabTBtn.addEventListener('click',()=>switchTab('transcript'));
+  tabLBtn.addEventListener('click',()=>switchTab('log'));
+
+  let previewAudio=null;
+  previewBtn.addEventListener('click', async () => {
+    if (previewAudio) { previewAudio.pause(); previewAudio=null; }
+    const voice=fVoice.value;
+    previewBtn.disabled=true; previewBtn.classList.add('loading'); previewBtn.querySelector('.play-icon').textContent='↻';
+    try {
+      const res=await fetch('https://api.openai.com/v1/audio/speech',{
+        method:'POST', headers:{'Authorization':`Bearer ${OPENAI_API_KEY}`,'Content-Type':'application/json'},
+        body:JSON.stringify({model:'tts-1',voice,input:`Hi, this is ${fName.value.trim()||'a customer'} calling about a price match on a recent booking.`,speed:1.0})
+      });
       if (!res.ok) throw new Error(`Preview failed (HTTP ${res.status})`);
-
-      const blob = await res.blob();
-      const url  = URL.createObjectURL(blob);
-      previewAudio = new Audio(url);
-      previewAudio.onended = () => {
-        URL.revokeObjectURL(url);
-        previewAudio = null;
-      };
+      const url=URL.createObjectURL(await res.blob());
+      previewAudio=new Audio(url);
+      previewAudio.onended=()=>{URL.revokeObjectURL(url);previewAudio=null;};
       previewAudio.play();
-    } catch (err) {
-      showError(`Preview error: ${err.message}`);
-    } finally {
-      previewBtn.disabled = false;
-      previewBtn.classList.remove('loading');
-      previewBtn.querySelector('.play-icon').textContent = '▶';
-    }
+    } catch(err) { showError(`Preview error: ${err.message}`); }
+    finally { previewBtn.disabled=false; previewBtn.classList.remove('loading'); previewBtn.querySelector('.play-icon').textContent='▶'; }
   });
 
-  // ── Start call ────────────────────────────────────────────
   async function startCall() {
     clearError();
-
-    const code     = fCode.value.trim();
-    const name     = fName.value.trim();
-    const retailer = fRetailer.value.trim();
-    const price    = fPrice.value.trim();
-    const context  = fContext.value.trim();
-
-    if (!code || !name || !retailer || !price) {
-      showError('All four fields are required before starting the call.');
-      return;
-    }
-
-    callState = 'connecting';
-    setStatus('connecting');
-    lockFields(true);
-
+    currentLogId=null; notesSection.style.display='none'; fNotes.value='';
+    const code=fCode.value.trim(), name=fName.value.trim();
+    const retailer=fRetailer.value.trim(), price=fPrice.value.trim(), context=fContext.value.trim();
+    if (!code||!name||!retailer||!price) { showError('All four fields are required before starting the call.'); return; }
+    callState='connecting'; setStatus('connecting'); lockFields(true);
     try {
-      // 1 ── Ephemeral session key
-      const sessRes = await fetch('https://api.openai.com/v1/realtime/sessions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${OPENAI_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-realtime-preview',
-          voice: fVoice.value,
-          input_audio_transcription: { model: 'whisper-1' },
-          turn_detection: { type: 'server_vad' },
-        }),
+      const sessRes=await fetch('https://api.openai.com/v1/realtime/sessions',{
+        method:'POST', headers:{'Authorization':`Bearer ${OPENAI_API_KEY}`,'Content-Type':'application/json'},
+        body:JSON.stringify({model:'gpt-4o-realtime-preview',voice:fVoice.value,input_audio_transcription:{model:'whisper-1'},turn_detection:{type:'server_vad'}})
       });
-
       if (!sessRes.ok) {
-        let msg = `Session creation failed (HTTP ${sessRes.status})`;
-        try { const j = await sessRes.json(); msg = j?.error?.message || msg; } catch {}
+        let msg=`Session creation failed (HTTP ${sessRes.status})`;
+        try{const j=await sessRes.json();msg=j?.error?.message||msg;}catch{}
         throw new Error(msg);
       }
-
-      const sessData = await sessRes.json();
-      const ephKey = sessData?.client_secret?.value;
+      const ephKey=(await sessRes.json())?.client_secret?.value;
       if (!ephKey) throw new Error('No ephemeral key returned by session endpoint.');
 
-      // 2 ── Peer connection
-      pc = new RTCPeerConnection();
+      pc=new RTCPeerConnection();
+      try { localStream=await navigator.mediaDevices.getUserMedia({audio:true}); }
+      catch { throw new Error('Microphone access denied — please allow mic permission and try again.'); }
+      localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));
+      pc.ontrack=e=>{audioEl.srcObject=e.streams[0];};
 
-      // 3 ── Microphone
-      try {
-        localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      } catch {
-        throw new Error('Microphone access denied — please allow mic permission and try again.');
-      }
-
-      localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
-
-      // 4 ── Remote audio
-      pc.ontrack = e => { audioEl.srcObject = e.streams[0]; };
-
-      // 5 ── Data channel
-      dc = pc.createDataChannel('oai-events', { ordered: true });
-
-      dc.onopen = () => {
-        sendSessionUpdate(name, code, retailer, price, context);
-        callState = 'active';
-        startTimer();
-        setStatus('listening');
+      dc=pc.createDataChannel('oai-events',{ordered:true});
+      dc.onopen=()=>{
+        sendSessionUpdate(name,code,retailer,price,context);
+        callState='active'; isMuted=false; isPaused=false;
+        startLogEntry(code,name,retailer,price,fVoice.value);
+        startTimer(); setStatus('listening'); actionRow.style.display='';
       };
+      dc.onmessage=onServerEvent;
+      dc.onerror=e=>showError(`Data channel error: ${e?.error?.message||'unknown'}`);
+      dc.onclose=()=>{if(callState==='active') teardown();};
 
-      dc.onmessage = onServerEvent;
-
-      dc.onerror = e => {
-        showError(`Data channel error: ${e?.error?.message || 'unknown'}`);
-      };
-
-      dc.onclose = () => {
-        if (callState === 'active') endCall();
-      };
-
-      // 6 ── SDP offer
-      const offer = await pc.createOffer();
+      const offer=await pc.createOffer();
       await pc.setLocalDescription(offer);
-
-      // 7 ── Exchange SDP
-      const sdpRes = await fetch('https://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${ephKey}`,
-          'Content-Type': 'application/sdp',
-        },
-        body: offer.sdp,
+      const sdpRes=await fetch('https://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview',{
+        method:'POST', headers:{'Authorization':`Bearer ${ephKey}`,'Content-Type':'application/sdp'}, body:offer.sdp
       });
-
       if (!sdpRes.ok) throw new Error(`SDP exchange failed (HTTP ${sdpRes.status})`);
-
-      const answerSdp = await sdpRes.text();
-      await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
-
-      // Data channel open event fires after ICE — we wait for it there.
-
-    } catch (err) {
-      showError(err.message || 'Connection failed.');
-      teardown();
-    }
+      await pc.setRemoteDescription({type:'answer',sdp:await sdpRes.text()});
+    } catch(err) { showError(err.message||'Connection failed.'); teardown(); }
   }
 
-  // ── End / teardown ────────────────────────────────────────
   function teardown() {
-    callState = 'idle'; // set first so onclose can't re-enter
-
-    finalizeBotLine();
-    stopTimer();
-
-    try { dc?.close(); } catch {}
-    try { pc?.close(); } catch {}
-    localStream?.getTracks().forEach(t => t.stop());
-    audioEl.srcObject = null;
-
-    dc = null;
-    pc = null;
-    localStream = null;
-
-    setStatus('idle');
-    lockFields(false);
+    callState='idle';
+    finalizeLogEntry(); finalizeBotLine(); stopTimer();
+    try{dc?.close();}catch{} try{pc?.close();}catch{}
+    localStream?.getTracks().forEach(t=>t.stop()); audioEl.srcObject=null;
+    dc=null; pc=null; localStream=null;
+    isMuted=false; isPaused=false;
+    muteBtn.textContent='🎤 MUTE'; muteBtn.classList.remove('muted');
+    pauseBtn.textContent='⏸ PAUSE'; pauseBtn.classList.remove('paused');
+    actionRow.style.display='none';
+    if (currentLogId) { notesSection.style.display=''; fNotes.focus(); }
+    setStatus('idle'); lockFields(false);
   }
 
-  function endCall() {
-    teardown();
-  }
+  callBtn.addEventListener('click',()=>{
+    if(callState==='idle') startCall();
+    else if(callState==='active') teardown();
+  });
+  muteBtn.addEventListener('click', toggleMute);
+  pauseBtn.addEventListener('click', togglePause);
+  fNotes.addEventListener('input',()=>updateLogNotes(fNotes.value.trim()));
 
-  // ── Button ────────────────────────────────────────────────
-  callBtn.addEventListener('click', () => {
-    if (callState === 'idle')   startCall();
-    else if (callState === 'active') endCall();
-    // connecting → button is disabled, no-op
+  clearBtn.addEventListener('click',()=>{
+    feed.querySelectorAll('.transcript-line').forEach(el=>el.remove());
+    lineNum=0; lineCount.classList.remove('visible'); emptyState.style.display='';
+    botItemId=null; botTextEl=null;
   });
 
-  // ── Clear transcript ──────────────────────────────────────
-  clearBtn.addEventListener('click', () => {
-    feed.querySelectorAll('.transcript-line').forEach(el => el.remove());
-    lineNum = 0;
-    lineCount.classList.remove('visible');
-    emptyState.style.display = '';
-    botItemId = null;
-    botTextEl = null;
+  document.addEventListener('keydown', e => {
+    const tag=document.activeElement?.tagName;
+    if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT') return;
+    if(e.key==='Enter'){
+      e.preventDefault();
+      if(callState==='idle') startCall();
+      else if(callState==='active') teardown();
+    }
+    if(e.key===' '){
+      e.preventDefault();
+      if(callState!=='active') return;
+      if(isPaused) togglePause(); else toggleMute();
+    }
   });
+
+  updateBadge();
 </script>
 </body>
 </html>
