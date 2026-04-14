@@ -261,6 +261,44 @@
         <label for="f-name">Full Name</label>
         <input id="f-name" type="text" placeholder="e.g. Jane Smith" autocomplete="off" spellcheck="false">
       </div>
+
+      <div class="section-label" style="margin-top:20px">Flight Details</div>
+      <div class="field-row">
+        <div class="field-group">
+          <label for="f-airline">Airline</label>
+          <input id="f-airline" type="text" placeholder="e.g. Delta" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="field-group">
+          <label for="f-layovers">Layovers</label>
+          <select id="f-layovers">
+            <option value="nonstop">Nonstop</option>
+            <option value="1 stop">1 stop</option>
+            <option value="2+ stops">2+ stops</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field-group">
+          <label for="f-from">From</label>
+          <input id="f-from" type="text" placeholder="SFO" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="field-group">
+          <label for="f-to">To</label>
+          <input id="f-to" type="text" placeholder="JFK" autocomplete="off" spellcheck="false">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field-group">
+          <label for="f-depart">Departure</label>
+          <input id="f-depart" type="text" placeholder="Apr 20, 2026" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="field-group">
+          <label for="f-return">Return</label>
+          <input id="f-return" type="text" placeholder="Apr 27, 2026 (or one-way)" autocomplete="off" spellcheck="false">
+        </div>
+      </div>
+
+      <div class="section-label" style="margin-top:20px">Price Match</div>
       <div class="field-group">
         <label for="f-retailer">Retailer / Where Found</label>
         <input id="f-retailer" type="text" placeholder="Google Flights" autocomplete="off" spellcheck="false">
@@ -403,6 +441,8 @@
   const $ = id => document.getElementById(id[0]==='#' ? id.slice(1) : id);
   const fCode=$("#f-code"), fName=$("#f-name"), fRetailer=$("#f-retailer"), fPrice=$("#f-price");
   const fOrigPrice=$("#f-orig-price"), savingsDisplay=$("#savings-display");
+  const fAirline=$("#f-airline"), fLayovers=$("#f-layovers"), fFrom=$("#f-from"), fTo=$("#f-to");
+  const fDepart=$("#f-depart"), fReturn=$("#f-return");
   const fFare=$("#f-fare"), fCancel=$("#f-cancel");
   const fVoice=$("#f-voice"), fContext=$("#f-context"), fNotes=$("#f-notes");
   const outcomeSuccess=$("#outcome-success"), outcomeFailure=$("#outcome-failure");
@@ -532,16 +572,17 @@
     setStatus(isPaused?'paused':'listening');
   }
 
-  function buildPrompt(name, code, retailer, price, origPrice, fare, cancel, context) {
+  function buildPrompt(name, code, airline, layovers, from, to, depart, ret, retailer, price, origPrice, fare, cancel, context) {
     const firstName = name.split(' ')[0];
     const lastName = name.includes(' ') ? name.split(' ').slice(1).join(' ') : null;
     const orig = parseFloat(origPrice||0), found = parseFloat(price||0);
     const diff = (orig>0 && found>0 && orig>found) ? (orig-found).toFixed(2) : null;
+    const flightLine = [airline, from&&to?`${from} → ${to}`:'', depart, ret&&ret!=='one-way'?`return ${ret}`:''].filter(Boolean).join(' · ');
     return `You ARE ${firstName} — a real person calling Capital One travel support to request a price match. You are not an AI assistant. You are the customer.
 
 Your booking info (only reveal each piece when directly asked — never volunteer it):
 - First name: ${firstName}${lastName ? `\n- Last name: ${lastName} (only give this if they specifically ask for your last name)` : ''}
-- Confirmation code: ${code}
+- Confirmation code: ${code}${flightLine?`\n- Flight: ${flightLine}`:''}${airline?`\n- Airline: ${airline}`:''}${from&&to?`\n- Route: ${from} → ${to}`:''}${layovers?`\n- Layovers: ${layovers}`:''}${depart?`\n- Departure: ${depart}`:''}${ret?`\n- Return: ${ret}`:''}
 - Original price paid: $${orig>0?orig.toFixed(2):'unknown'}
 - Lower price found at ${retailer}: $${found>0?found.toFixed(2):price}${diff?`\n- Difference: $${diff} less than what you paid`:''}
 - Fare class: ${fare||'economy'}
@@ -583,11 +624,11 @@ Rules:
 - You're a mildly impatient but polite customer who just wants this handled quickly`;
   }
 
-  function sendSessionUpdate(name, code, retailer, price, origPrice, fare, cancel, context) {
+  function sendSessionUpdate(name, code, airline, layovers, from, to, depart, ret, retailer, price, origPrice, fare, cancel, context) {
     dc.send(JSON.stringify({
       type:'session.update',
       session:{
-        instructions: buildPrompt(name,code,retailer,price,origPrice,fare,cancel,context),
+        instructions: buildPrompt(name,code,airline,layovers,from,to,depart,ret,retailer,price,origPrice,fare,cancel,context),
         input_audio_transcription: { model:'whisper-1' },
         turn_detection: { type:'server_vad' },
         temperature: 1.0
@@ -595,7 +636,7 @@ Rules:
     }));
   }
 
-  const formFields=[fCode,fName,fRetailer,fPrice,fOrigPrice,fFare,fCancel,fVoice,fContext];
+  const formFields=[fCode,fName,fAirline,fLayovers,fFrom,fTo,fDepart,fReturn,fRetailer,fPrice,fOrigPrice,fFare,fCancel,fVoice,fContext];
   function lockFields(v) { formFields.forEach(f=>f.disabled=v); previewBtn.disabled=v; }
 
   function saveLog() {
@@ -605,12 +646,12 @@ Rules:
   }
   function updateBadge() { logBadge.textContent=callLog.length; logBadge.classList.toggle('lit',callLog.length>0); }
 
-  function startLogEntry(code, name, retailer, price, origPrice, voice) {
+  function startLogEntry(code, name, airline, from, to, depart, retailer, price, origPrice, voice) {
     const entry = {
       id:Date.now(),
       date:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
       time:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
-      duration:'--:--', code, name, retailer, price, origPrice, voice, outcome:null, notes:''
+      duration:'--:--', code, name, airline, from, to, depart, retailer, price, origPrice, voice, outcome:null, notes:''
     };
     currentLogId=entry.id; callLog.unshift(entry); saveLog();
   }
@@ -663,7 +704,12 @@ Rules:
       const dur=document.createElement('span'); dur.className='log-entry-dur'; dur.textContent=entry.duration;
       top.appendChild(topLeft); top.appendChild(dur);
       const fields=document.createElement('div'); fields.className='log-entry-fields';
-      [['Code',entry.code],['Name',entry.name],['Retailer',entry.retailer],['Price',`$${entry.price}`],['Voice',entry.voice]].forEach(([l,v])=>{
+      const logFields=[['Code',entry.code],['Name',entry.name]];
+      if(entry.airline) logFields.push(['Airline',entry.airline]);
+      if(entry.from&&entry.to) logFields.push(['Route',`${entry.from} → ${entry.to}`]);
+      if(entry.depart) logFields.push(['Depart',entry.depart]);
+      logFields.push(['Retailer',entry.retailer],['Price',`$${entry.price}`],['Voice',entry.voice]);
+      logFields.forEach(([l,v])=>{
         const f=document.createElement('span'); f.className='log-field';
         const lbl=document.createElement('span'); lbl.className='log-field-lbl'; lbl.textContent=l;
         const val=document.createElement('span'); val.className='log-field-val'; val.textContent=v;
@@ -780,6 +826,8 @@ Rules:
     clearError();
     currentLogId=null; notesSection.style.display='none'; fNotes.value='';
     const code=fCode.value.trim(), name=fName.value.trim();
+    const airline=fAirline.value.trim(), layovers=fLayovers.value, from=fFrom.value.trim(), to=fTo.value.trim();
+    const depart=fDepart.value.trim(), ret=fReturn.value.trim();
     const retailer=fRetailer.value.trim(), price=fPrice.value.trim(), origPrice=fOrigPrice.value.trim();
     const fare=fFare.value.trim(), cancel=fCancel.value.trim(), context=fContext.value.trim();
     if (!code||!name||!retailer||!price) { showError('All four fields are required before starting the call.'); return; }
@@ -805,9 +853,9 @@ Rules:
 
       dc=pc.createDataChannel('oai-events',{ordered:true});
       dc.onopen=()=>{
-        sendSessionUpdate(name,code,retailer,price,origPrice,fare,cancel,context);
+        sendSessionUpdate(name,code,airline,layovers,from,to,depart,ret,retailer,price,origPrice,fare,cancel,context);
         callState='active'; isMuted=false; isPaused=false;
-        startLogEntry(code,name,retailer,price,origPrice,fVoice.value);
+        startLogEntry(code,name,airline,from,to,depart,retailer,price,origPrice,fVoice.value);
         startTimer(); setStatus('listening'); actionRow.style.display=''; livePromptSection.style.display='';
         // Agent speaks first — introduce as the customer calling about a price match
         setTimeout(()=>{
