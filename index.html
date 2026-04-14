@@ -887,7 +887,7 @@
         body: JSON.stringify({
           model: 'tts-1',
           voice,
-          input: "Hi, this is Shagun calling about a price match on a recent booking.",
+          input: `Hi, this is ${fName.value.trim() || 'a customer'} calling about a price match on a recent booking.`,
           speed: 1.0,
         }),
       });
@@ -1014,12 +1014,14 @@
 
     } catch (err) {
       showError(err.message || 'Connection failed.');
-      await teardown();
+      teardown();
     }
   }
 
   // ── End / teardown ────────────────────────────────────────
-  async function teardown() {
+  function teardown() {
+    callState = 'idle'; // set first so onclose can't re-enter
+
     finalizeBotLine();
     stopTimer();
 
@@ -1031,7 +1033,6 @@
     dc = null;
     pc = null;
     localStream = null;
-    callState = 'idle';
 
     setStatus('idle');
     lockFields(false);
