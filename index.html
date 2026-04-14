@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>C1 Price Match</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0E0F11;
+      --surface: #151619;
+      --input:   #1A1B1F;
+      --border:  #2A2B30;
+      --text:    #E8E8EC;
+      --dim:     #8A8B92;
+      --muted:   #5A5B62;
+      --accent:  #00E5FF;
+      --yellow:  #FFD600;
+      --green:   #00E676;
+      --red:     #FF5252;
+      --mono: 'IBM Plex Mono', monospace;
+      --sans: 'DM Sans', sans-serif;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 14px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* ── Header ────────────────────────────────────────────── */
+    .app-header {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 13px 28px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo-mark {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      padding: 3px 8px;
+    }
+
+    .app-title {
+      font-family: var(--sans);
+      font-size: 11px;
+      font-weight: 400;
+      color: var(--dim);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    /* ── Body layout ───────────────────────────────────────── */
+    .app-body {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    /* ── Left panel ─────────────────────────────────────────  */
+    .panel-left {
+      width: 420px;
+      flex-shrink: 0;
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 28px 24px;
+      min-height: 0;
+      overflow-y: auto;
+    }
+
+    .panel-left::-webkit-scrollbar { width: 3px; }
+    .panel-left::-webkit-scrollbar-track { background: transparent; }
+    .panel-left::-webkit-scrollbar-thumb { background: var(--border); }
+
+    .section-label {
+      font-family: var(--sans);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 18px;
+    }
+
+    .fields-section {
+      flex: 1;
+    }
+
+    .field-group {
+      margin-bottom: 14px;
+    }
+
+    .field-group label {
+      display: block;
+      font-family: var(--sans);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      color: var(--dim);
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .field-group input {
+      width: 100%;
+      background: var(--input);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 400;
+      padding: 10px 12px;
+      outline: none;
+      transition: border-color 0.15s;
+      -webkit-appearance: none;
+    }
+
+    .field-group input:focus { border-color: var(--accent); }
+    .field-group input::placeholder { color: var(--muted); font-weight: 300; }
+    .field-group input:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    /* Remove number input spinners */
+    .field-group input[type=number]::-webkit-inner-spin-button,
+    .field-group input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+    .field-group input[type=number] { -moz-appearance: textfield; }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .panel-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 24px 0;
+    }
+
+    /* ── Controls ───────────────────────────────────────────  */
+    .controls-section {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .timer-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .timer-display {
+      font-family: var(--mono);
+      font-size: 30px;
+      font-weight: 300;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+      transition: color 0.3s;
+      line-height: 1;
+    }
+
+    .timer-display.active { color: var(--accent); }
+
+    .call-btn {
+      width: 100%;
+      padding: 16px;
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.2s, opacity 0.2s, color 0.2s;
+    }
+
+    .call-btn.idle       { background: var(--accent); color: #000; }
+    .call-btn.connecting { background: var(--yellow); color: #000; }
+    .call-btn.active     { background: var(--red); color: #fff; }
+    .call-btn:disabled   { opacity: 0.45; cursor: not-allowed; }
+
+    /* ── Status bar ─────────────────────────────────────────  */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .status-dot.idle        { background: var(--muted); }
+    .status-dot.connecting  { background: var(--yellow); animation: pulse 0.75s ease-in-out infinite; }
+    .status-dot.listening   { background: var(--accent); animation: pulse 2.2s ease-in-out infinite; }
+    .status-dot.speaking    { background: var(--green);  animation: pulse 0.45s ease-in-out infinite; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.3; transform: scale(0.75); }
+    }
+
+    .status-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 400;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      transition: color 0.2s;
+    }
+
+    .status-label.idle        { color: var(--muted); }
+    .status-label.connecting  { color: var(--yellow); }
+    .status-label.listening   { color: var(--accent); }
+    .status-label.speaking    { color: var(--green); }
+
+    /* ── Error banner ───────────────────────────────────────  */
+    .error-banner {
+      display: none;
+      padding: 10px 12px;
+      background: rgba(255, 82, 82, 0.08);
+      border: 1px solid rgba(255, 82, 82, 0.35);
+      color: var(--red);
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 300;
+      line-height: 1.6;
+    }
+
+    .error-banner.visible { display: block; }
+
+    /* ── Right panel ────────────────────────────────────────  */
+    .panel-right {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      min-height: 0;
+    }
+
+    .transcript-header {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 13px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .transcript-header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .transcript-title {
+      font-family: var(--sans);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .line-count {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--muted);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 2px 7px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .line-count.visible { opacity: 1; }
+
+    .clear-btn {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 400;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      background: none;
+      border: 1px solid var(--border);
+      padding: 5px 11px;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: color 0.15s, border-color 0.15s;
+    }
+
+    .clear-btn:hover { color: var(--text); border-color: var(--dim); }
+
+    /* ── Transcript feed ────────────────────────────────────  */
+    .transcript-feed {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      min-height: 0;
+    }
+
+    .transcript-feed::-webkit-scrollbar { width: 3px; }
+    .transcript-feed::-webkit-scrollbar-track { background: transparent; }
+    .transcript-feed::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    .transcript-feed::-webkit-scrollbar-thumb:hover { background: var(--dim); }
+
+    .empty-state {
+      margin: auto;
+      text-align: center;
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 300;
+      color: var(--muted);
+      line-height: 2;
+    }
+
+    .transcript-line {
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(42, 43, 48, 0.6);
+      animation: line-in 0.18s ease-out forwards;
+      opacity: 0;
+      transform: translateY(5px);
+    }
+
+    @keyframes line-in {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .line-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .role-tag {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .role-tag.agent { color: var(--dim); }
+    .role-tag.bot   { color: var(--accent); }
+
+    .line-time {
+      font-family: var(--mono);
+      font-size: 9px;
+      color: var(--muted);
+    }
+
+    .line-text {
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 300;
+      color: var(--text);
+      line-height: 1.65;
+    }
+
+    .line-text.bot-text { color: rgba(0, 229, 255, 0.82); }
+
+    .cursor {
+      display: inline-block;
+      animation: blink 1s step-end infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="app-header">
+  <span class="logo-mark">C1</span>
+  <span class="app-title">Travel Price Match Automation</span>
+</header>
+
+<div class="app-body">
+
+  <!-- ── Left panel ─────────────────────────────────── -->
+  <aside class="panel-left">
+    <div class="fields-section">
+      <div class="section-label">Call Details</div>
+
+      <div class="field-group">
+        <label for="f-code">Confirmation Code</label>
+        <input id="f-code" type="text" placeholder="e.g. AB12CD" autocomplete="off" spellcheck="false">
+      </div>
+
+      <div class="field-group">
+        <label for="f-name">Full Name</label>
+        <input id="f-name" type="text" value="Shagun Srivastava" autocomplete="off" spellcheck="false">
+      </div>
+
+      <div class="field-row">
+        <div class="field-group">
+          <label for="f-retailer">Retailer / Where Found</label>
+          <input id="f-retailer" type="text" placeholder="Google Flights" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="field-group">
+          <label for="f-price">Price Found</label>
+          <input id="f-price" type="number" placeholder="0.00" min="0" step="0.01" autocomplete="off">
+        </div>
+      </div>
+    </div>
+
+    <hr class="panel-divider">
+
+    <div class="controls-section">
+      <div class="timer-row">
+        <span class="section-label" style="margin-bottom:0">Duration</span>
+        <div class="timer-display" id="timer">00:00</div>
+      </div>
+
+      <button class="call-btn idle" id="call-btn">START CALL</button>
+
+      <div class="status-bar">
+        <div class="status-dot idle" id="s-dot"></div>
+        <span class="status-label idle" id="s-label">IDLE</span>
+      </div>
+
+      <div class="error-banner" id="error-banner"></div>
+    </div>
+  </aside>
+
+  <!-- ── Right panel ────────────────────────────────── -->
+  <main class="panel-right">
+    <div class="transcript-header">
+      <div class="transcript-header-left">
+        <span class="transcript-title">Live Transcript</span>
+        <span class="line-count" id="line-count">0 lines</span>
+      </div>
+      <button class="clear-btn" id="clear-btn">Clear</button>
+    </div>
+    <div class="transcript-feed" id="feed">
+      <div class="empty-state" id="empty-state">
+        Transcript will appear here<br>once the call begins
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<audio id="remote-audio" autoplay></audio>
+
+<script>
+  // ─────────────────────────────────────────────────────────
+  //  CONFIG — paste your key here
+  // ─────────────────────────────────────────────────────────
+  const OPENAI_API_KEY = "YOUR_OPENAI_API_KEY_HERE";
+
+  // ── DOM refs ──────────────────────────────────────────────
+  const $ = id => document.getElementById(id);
+  const fCode     = $('f-code');
+  const fName     = $('f-name');
+  const fRetailer = $('f-retailer');
+  const fPrice    = $('f-price');
+  const callBtn   = $('call-btn');
+  const timerEl   = $('timer');
+  const sDot      = $('s-dot');
+  const sLabel    = $('s-label');
+  const errBanner = $('error-banner');
+  const feed      = $('feed');
+  const emptyState= $('empty-state');
+  const lineCount = $('line-count');
+  const clearBtn  = $('clear-btn');
+  const audioEl   = $('remote-audio');
+
+  // ── Runtime state ─────────────────────────────────────────
+  let pc           = null;   // RTCPeerConnection
+  let dc           = null;   // DataChannel
+  let localStream  = null;
+  let timerIv      = null;
+  let timerSecs    = 0;
+  let callState    = 'idle'; // idle | connecting | active
+  let lineNum      = 0;
+
+  // Bot streaming line
+  let botItemId    = null;
+  let botTextEl    = null;
+
+  // ── Status ────────────────────────────────────────────────
+  const STATES = {
+    idle:       { dot: 'idle',       label: 'IDLE',        btn: 'idle',       btnTxt: 'START CALL',    disabled: false },
+    connecting: { dot: 'connecting', label: 'CONNECTING',  btn: 'connecting', btnTxt: 'CONNECTING...', disabled: true  },
+    listening:  { dot: 'listening',  label: 'LISTENING',   btn: 'active',     btnTxt: 'END CALL',      disabled: false },
+    speaking:   { dot: 'speaking',   label: 'SPEAKING',    btn: 'active',     btnTxt: 'END CALL',      disabled: false },
+  };
+
+  function setStatus(state) {
+    const s = STATES[state];
+    sDot.className    = `status-dot ${s.dot}`;
+    sLabel.className  = `status-label ${s.dot}`;
+    sLabel.textContent = s.label;
+    callBtn.className = `call-btn ${s.btn}`;
+    callBtn.textContent = s.btnTxt;
+    callBtn.disabled  = s.disabled;
+  }
+
+  function showError(msg) {
+    errBanner.textContent = msg;
+    errBanner.classList.add('visible');
+  }
+
+  function clearError() {
+    errBanner.classList.remove('visible');
+  }
+
+  // ── Timer ─────────────────────────────────────────────────
+  function startTimer() {
+    timerSecs = 0;
+    timerEl.classList.add('active');
+    timerIv = setInterval(() => {
+      timerSecs++;
+      const m = String(Math.floor(timerSecs / 60)).padStart(2, '0');
+      const s = String(timerSecs % 60).padStart(2, '0');
+      timerEl.textContent = `${m}:${s}`;
+    }, 1000);
+  }
+
+  function stopTimer() {
+    clearInterval(timerIv);
+    timerIv = null;
+    timerEl.textContent = '00:00';
+    timerEl.classList.remove('active');
+  }
+
+  // ── Transcript ────────────────────────────────────────────
+  function timestamp() {
+    return new Date().toTimeString().slice(0, 8);
+  }
+
+  function addLine(role, text, streaming) {
+    emptyState.style.display = 'none';
+    lineNum++;
+    lineCount.textContent = `${lineNum} line${lineNum !== 1 ? 's' : ''}`;
+    lineCount.classList.add('visible');
+
+    const wrap = document.createElement('div');
+    wrap.className = 'transcript-line';
+
+    const meta = document.createElement('div');
+    meta.className = 'line-meta';
+
+    const tag = document.createElement('span');
+    tag.className = `role-tag ${role}`;
+    tag.textContent = role.toUpperCase();
+
+    const ts = document.createElement('span');
+    ts.className = 'line-time';
+    ts.textContent = timestamp();
+
+    meta.appendChild(tag);
+    meta.appendChild(ts);
+
+    const txt = document.createElement('div');
+    txt.className = `line-text${role === 'bot' ? ' bot-text' : ''}`;
+
+    if (streaming) {
+      txt.textContent = text;
+      const cur = document.createElement('span');
+      cur.className = 'cursor';
+      cur.textContent = '▌';
+      txt.appendChild(cur);
+    } else {
+      txt.textContent = text;
+    }
+
+    wrap.appendChild(meta);
+    wrap.appendChild(txt);
+    feed.appendChild(wrap);
+    feed.scrollTop = feed.scrollHeight;
+
+    return txt;
+  }
+
+  function appendBotDelta(itemId, delta) {
+    if (!delta) return;
+
+    if (botItemId !== itemId) {
+      botItemId = itemId;
+      botTextEl = addLine('bot', delta, true);
+    } else if (botTextEl) {
+      const cur = botTextEl.querySelector('.cursor');
+      if (cur) cur.remove();
+      botTextEl.textContent += delta;
+      const cur2 = document.createElement('span');
+      cur2.className = 'cursor';
+      cur2.textContent = '▌';
+      botTextEl.appendChild(cur2);
+      feed.scrollTop = feed.scrollHeight;
+    }
+  }
+
+  function finalizeBotLine() {
+    if (botTextEl) {
+      const cur = botTextEl.querySelector('.cursor');
+      if (cur) cur.remove();
+    }
+    botTextEl = null;
+    botItemId = null;
+  }
+
+  // ── DataChannel event handler ─────────────────────────────
+  function onServerEvent(ev) {
+    let msg;
+    try { msg = JSON.parse(ev.data); } catch { return; }
+
+    switch (msg.type) {
+      case 'response.audio_transcript.delta':
+        appendBotDelta(msg.item_id, msg.delta || '');
+        break;
+
+      case 'response.audio_transcript.done':
+        finalizeBotLine();
+        break;
+
+      case 'conversation.item.input_audio_transcription.completed': {
+        const t = (msg.transcript || '').trim();
+        if (t) addLine('agent', t, false);
+        break;
+      }
+
+      case 'input_audio_buffer.speech_started':
+        setStatus('listening');
+        break;
+
+      case 'response.created':
+      case 'response.audio.delta':
+        setStatus('speaking');
+        break;
+
+      case 'response.done':
+        setStatus('listening');
+        break;
+
+      case 'error':
+        showError(`API error: ${msg.error?.message || 'unknown'}`);
+        break;
+    }
+  }
+
+  // ── System prompt ─────────────────────────────────────────
+  function buildSystemPrompt(name, code, retailer, price) {
+    return [
+      `You are handling a Capital One travel price match call on behalf of ${name}.`,
+      `You will be asked for: confirmation code (${code}), full name (${name}), where the lower price was found (${retailer}), and the price found ($${price}).`,
+      `Answer only what is directly asked. Be brief and natural — 1-2 sentences max.`,
+      `Do not volunteer information unprompted.`,
+      `If asked something unexpected or unclear, say "Could you repeat that?" to buy time.`,
+      `Speak in a calm, natural conversational tone. Do not sound robotic or scripted.`,
+    ].join('\n');
+  }
+
+  function sendSessionUpdate(name, code, retailer, price) {
+    const payload = {
+      type: 'session.update',
+      session: {
+        instructions: buildSystemPrompt(name, code, retailer, price),
+        input_audio_transcription: { model: 'whisper-1' },
+        turn_detection: { type: 'server_vad' },
+      },
+    };
+    dc.send(JSON.stringify(payload));
+  }
+
+  // ── Fields helpers ────────────────────────────────────────
+  const fields = [fCode, fName, fRetailer, fPrice];
+
+  function lockFields(v) {
+    fields.forEach(f => f.disabled = v);
+  }
+
+  // ── Start call ────────────────────────────────────────────
+  async function startCall() {
+    clearError();
+
+    const code     = fCode.value.trim();
+    const name     = fName.value.trim();
+    const retailer = fRetailer.value.trim();
+    const price    = fPrice.value.trim();
+
+    if (!code || !name || !retailer || !price) {
+      showError('All four fields are required before starting the call.');
+      return;
+    }
+
+    callState = 'connecting';
+    setStatus('connecting');
+    lockFields(true);
+
+    try {
+      // 1 ── Ephemeral session key
+      const sessRes = await fetch('https://api.openai.com/v1/realtime/sessions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-realtime-preview',
+          voice: 'alloy',
+          input_audio_transcription: { model: 'whisper-1' },
+          turn_detection: { type: 'server_vad' },
+        }),
+      });
+
+      if (!sessRes.ok) {
+        let msg = `Session creation failed (HTTP ${sessRes.status})`;
+        try { const j = await sessRes.json(); msg = j?.error?.message || msg; } catch {}
+        throw new Error(msg);
+      }
+
+      const sessData = await sessRes.json();
+      const ephKey = sessData?.client_secret?.value;
+      if (!ephKey) throw new Error('No ephemeral key returned by session endpoint.');
+
+      // 2 ── Peer connection
+      pc = new RTCPeerConnection();
+
+      // 3 ── Microphone
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch {
+        throw new Error('Microphone access denied — please allow mic permission and try again.');
+      }
+
+      localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+
+      // 4 ── Remote audio
+      pc.ontrack = e => { audioEl.srcObject = e.streams[0]; };
+
+      // 5 ── Data channel
+      dc = pc.createDataChannel('oai-events', { ordered: true });
+
+      dc.onopen = () => {
+        sendSessionUpdate(name, code, retailer, price);
+        callState = 'active';
+        startTimer();
+        setStatus('listening');
+      };
+
+      dc.onmessage = onServerEvent;
+
+      dc.onerror = e => {
+        showError(`Data channel error: ${e?.error?.message || 'unknown'}`);
+      };
+
+      dc.onclose = () => {
+        if (callState === 'active') endCall();
+      };
+
+      // 6 ── SDP offer
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      // 7 ── Exchange SDP
+      const sdpRes = await fetch('https://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${ephKey}`,
+          'Content-Type': 'application/sdp',
+        },
+        body: offer.sdp,
+      });
+
+      if (!sdpRes.ok) throw new Error(`SDP exchange failed (HTTP ${sdpRes.status})`);
+
+      const answerSdp = await sdpRes.text();
+      await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
+
+      // Data channel open event fires after ICE — we wait for it there.
+
+    } catch (err) {
+      showError(err.message || 'Connection failed.');
+      await teardown();
+    }
+  }
+
+  // ── End / teardown ────────────────────────────────────────
+  async function teardown() {
+    finalizeBotLine();
+    stopTimer();
+
+    try { dc?.close(); } catch {}
+    try { pc?.close(); } catch {}
+    localStream?.getTracks().forEach(t => t.stop());
+    audioEl.srcObject = null;
+
+    dc = null;
+    pc = null;
+    localStream = null;
+    callState = 'idle';
+
+    setStatus('idle');
+    lockFields(false);
+  }
+
+  function endCall() {
+    teardown();
+  }
+
+  // ── Button ────────────────────────────────────────────────
+  callBtn.addEventListener('click', () => {
+    if (callState === 'idle')   startCall();
+    else if (callState === 'active') endCall();
+    // connecting → button is disabled, no-op
+  });
+
+  // ── Clear transcript ──────────────────────────────────────
+  clearBtn.addEventListener('click', () => {
+    feed.querySelectorAll('.transcript-line').forEach(el => el.remove());
+    lineNum = 0;
+    lineCount.classList.remove('visible');
+    emptyState.style.display = '';
+    botItemId = null;
+    botTextEl = null;
+  });
+</script>
+</body>
+</html>
