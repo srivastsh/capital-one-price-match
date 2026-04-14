@@ -11,7 +11,8 @@ A single-file browser tool that handles Capital One travel price match calls usi
 ## How it works
 
 - Uses the [OpenAI Realtime API](https://platform.openai.com/docs/guides/realtime) via WebRTC — no server, runs entirely in the browser
-- Establishes a live audio session with `gpt-4o-realtime-preview`
+- Model: `gpt-4o-realtime-preview` with voice `alloy` and server-side VAD turn detection
+- Input transcription via `whisper-1` (powers the AGENT side of the live transcript)
 - The agent is prompted with your confirmation code, name, retailer, and price found — it answers questions naturally and only responds to what's directly asked
 - Live transcript shows both sides of the conversation in real time
 
