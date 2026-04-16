@@ -959,8 +959,8 @@ Rules:
       if (msg.error) showError(`Gemini error: ${msg.error.message||'unknown'}`);
     };
 
-    ws.onerror=()=>showError('WebSocket error — check your Gemini API key and network');
-    ws.onclose=()=>{ if(callState==='active') teardown(); };
+    ws.onerror=()=>showError('WebSocket error — check Gemini API key and network');
+    ws.onclose=e=>{ if(callState!=='idle'){ if(e.code!==1000&&e.reason) showError(`Connection closed: ${e.reason} (${e.code})`); teardown(); } };
   }
 
   function teardown() {
