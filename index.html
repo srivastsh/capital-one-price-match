@@ -367,14 +367,11 @@
         <div class="field-group" style="margin-bottom:0">
           <label for="f-voice">Voice</label>
           <select id="f-voice">
-            <option value="alloy">alloy</option>
-            <option value="ash" selected>ash</option>
-            <option value="ballad">ballad</option>
-            <option value="coral">coral</option>
-            <option value="echo">echo</option>
-            <option value="sage">sage</option>
-            <option value="shimmer">shimmer</option>
-            <option value="verse">verse</option>
+            <option value="Aoede" selected>Aoede</option>
+            <option value="Charon">Charon</option>
+            <option value="Fenrir">Fenrir</option>
+            <option value="Kore">Kore</option>
+            <option value="Puck">Puck</option>
           </select>
         </div>
         <button class="preview-btn" id="preview-btn" title="Preview voice">
@@ -467,10 +464,10 @@
 
 </div>
 
-<audio id="remote-audio" autoplay></audio>
 
 <script>
-  const OPENAI_API_KEY = "YOUR_OPENAI_API_KEY_HERE";
+  const OPENAI_API_KEY  = "YOUR_OPENAI_API_KEY_HERE"; // email parsing + TTS preview only
+  const GEMINI_API_KEY  = "YOUR_GEMINI_API_KEY_HERE"; // live call
 
   const $ = id => document.getElementById(id[0]==='#' ? id.slice(1) : id);
   const fCode=$("#f-code"), fName=$("#f-name"), fRetailer=$("#f-retailer"), fPrice=$("#f-price");
@@ -490,11 +487,10 @@
   const timerEl=$("#timer"), sDot=$("#s-dot"), sLabel=$("#s-label"), kbdHint=$("#kbd-hint");
   const errBanner=$("#error-banner");
   const feed=$("#feed"), emptyState=$("#empty-state"), lineCount=$("#line-count"), clearBtn=$("#clear-btn");
-  const audioEl=$("#remote-audio");
   const tabTBtn=$("#tab-t-btn"), tabLBtn=$("#tab-l-btn"), tabWBtn=$("#tab-w-btn"), logBadge=$("#log-badge");
   const logPanel=$("#log-panel"), logEmpty=$("#log-empty"), wrappedPanel=$("#wrapped-panel");
 
-  let pc=null, dc=null, localStream=null;
+  let ws=null, localStream=null, audioCtx=null, processor=null, playCtx=null, nextPlayTime=0;
   let timerIv=null, timerSecs=0;
   let callState='idle';
   let isMuted=false, isPaused=false;
@@ -570,31 +566,51 @@
     botTextEl=null; botItemId=null;
   }
 
-  function onServerEvent(ev) {
-    let msg; try { msg=JSON.parse(ev.data); } catch { return; }
-    switch(msg.type) {
-      case 'response.audio_transcript.delta':    appendBotDelta(msg.item_id, msg.delta||''); break;
-      case 'response.audio_transcript.done':     finalizeBotLine(); break;
-      case 'conversation.item.input_audio_transcription.completed': {
-        const t=(msg.transcript||'').trim(); if(t) addLine('agent',t,false); break;
-      }
-      case 'input_audio_buffer.speech_started':  if(!isMuted&&!isPaused) setStatus('listening'); break;
-      case 'response.created':
-      case 'response.audio.delta':               if(!isMuted&&!isPaused) setStatus('speaking'); break;
-      case 'response.done':                      if(!isMuted&&!isPaused) setStatus('listening'); break;
-      case 'error':                              showError(`API error: ${msg.error?.message||'unknown'}`); break;
-    }
+  // ── Gemini audio playback (24 kHz PCM) ──────────────────────────────────
+  function ensurePlayCtx() {
+    if (!playCtx || playCtx.state==='closed') { playCtx=new AudioContext({sampleRate:24000}); nextPlayTime=0; }
+    if (playCtx.state==='suspended') playCtx.resume();
   }
 
-  function setMic(on) { localStream?.getAudioTracks().forEach(t => t.enabled=on); }
+  function playPCMChunk(b64) {
+    ensurePlayCtx();
+    try {
+      const bytes=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
+      const int16=new Int16Array(bytes.buffer);
+      const f32=new Float32Array(int16.length);
+      for(let i=0;i<int16.length;i++) f32[i]=int16[i]/32768;
+      const buf=playCtx.createBuffer(1,f32.length,24000);
+      buf.copyToChannel(f32,0);
+      const src=playCtx.createBufferSource(); src.buffer=buf; src.connect(playCtx.destination);
+      const when=Math.max(nextPlayTime, playCtx.currentTime+0.04);
+      src.start(when); nextPlayTime=when+buf.duration;
+    } catch(e){ console.warn('PCM play error',e); }
+  }
+
+  // ── Mic capture → Gemini (16 kHz PCM) ───────────────────────────────────
+  function startMicCapture() {
+    audioCtx=new AudioContext({sampleRate:16000});
+    const src=audioCtx.createMediaStreamSource(localStream);
+    processor=audioCtx.createScriptProcessor(4096,1,1);
+    const sink=audioCtx.createGain(); sink.gain.value=0; // silence monitor
+    processor.onaudioprocess=e=>{
+      if(isMuted||isPaused||ws?.readyState!==WebSocket.OPEN) return;
+      const f32=e.inputBuffer.getChannelData(0);
+      const int16=new Int16Array(f32.length);
+      for(let i=0;i<f32.length;i++) int16[i]=Math.max(-32768,Math.min(32767,f32[i]*32768|0));
+      const u8=new Uint8Array(int16.buffer);
+      let bin=''; for(let i=0;i<u8.length;i++) bin+=String.fromCharCode(u8[i]);
+      ws.send(JSON.stringify({realtime_input:{media_chunks:[{mime_type:'audio/pcm;rate=16000',data:btoa(bin)}]}}));
+    };
+    src.connect(processor); processor.connect(sink); sink.connect(audioCtx.destination);
+  }
 
   function toggleMute() {
     if (callState!=='active') return;
     if (isPaused) { isPaused=false; pauseBtn.textContent='⏸ PAUSE'; pauseBtn.classList.remove('paused'); }
     isMuted=!isMuted;
-    setMic(!isMuted);
-    muteBtn.textContent = isMuted?'🎤 UNMUTE':'🎤 MUTE';
-    muteBtn.classList.toggle('muted', isMuted);
+    muteBtn.textContent=isMuted?'🎤 UNMUTE':'🎤 MUTE';
+    muteBtn.classList.toggle('muted',isMuted);
     setStatus(isMuted?'muted':'listening');
   }
 
@@ -602,10 +618,8 @@
     if (callState!=='active') return;
     if (isMuted) { isMuted=false; muteBtn.textContent='🎤 MUTE'; muteBtn.classList.remove('muted'); }
     isPaused=!isPaused;
-    setMic(!isPaused);
-    if (isPaused && dc?.readyState==='open') dc.send(JSON.stringify({type:'input_audio_buffer.clear'}));
-    pauseBtn.textContent = isPaused?'⏸ RESUME':'⏸ PAUSE';
-    pauseBtn.classList.toggle('paused', isPaused);
+    pauseBtn.textContent=isPaused?'⏸ RESUME':'⏸ PAUSE';
+    pauseBtn.classList.toggle('paused',isPaused);
     setStatus(isPaused?'paused':'listening');
   }
 
@@ -661,17 +675,6 @@ Rules:
 - You're a mildly impatient but polite customer who just wants this handled quickly`;
   }
 
-  function sendSessionUpdate(name, code, airline, layovers, layoverDetails, from, to, depart, ret, retailer, price, origPrice, fare, cancel, context) {
-    dc.send(JSON.stringify({
-      type:'session.update',
-      session:{
-        instructions: buildPrompt(name,code,airline,layovers,layoverDetails,from,to,depart,ret,retailer,price,origPrice,fare,cancel,context),
-        input_audio_transcription: { model:'whisper-1' },
-        turn_detection: { type:'server_vad' },
-        temperature: 1.0
-      }
-    }));
-  }
 
   const formFields=[fCode,fName,fAirline,fLayovers,fLayoverDetails,fFrom,fTo,fDepart,fReturn,fRetailer,fPrice,fOrigPrice,fFare,fCancel,fVoice,fContext];
   function lockFields(v) { formFields.forEach(f=>f.disabled=v); previewBtn.disabled=v; }
@@ -700,9 +703,8 @@ Rules:
   }
 
   function injectLivePrompt() {
-    const text=fLivePrompt.value.trim(); if(!text||dc?.readyState!=='open') return;
-    dc.send(JSON.stringify({type:'conversation.item.create',item:{type:'message',role:'user',content:[{type:'input_text',text:`[Private note — use this to answer the rep's question naturally: ${text}. Do not read this note aloud; just respond using the info.]`}]}}));
-    dc.send(JSON.stringify({type:'response.create'}));
+    const text=fLivePrompt.value.trim(); if(!text||ws?.readyState!==WebSocket.OPEN) return;
+    ws.send(JSON.stringify({clientContent:{turns:[{role:'user',parts:[{text:`[Private note — use this to answer the rep's question naturally: ${text}. Do not read this note aloud; just respond using the info.]`}]}],turnComplete:true}}));
     fLivePrompt.value='';
   }
 
@@ -840,10 +842,13 @@ Rules:
     }
   }
 
+  // Approximate Gemini → OpenAI TTS voice mapping for preview
+  const PREVIEW_VOICE_MAP={Aoede:'shimmer',Charon:'echo',Fenrir:'alloy',Kore:'nova',Puck:'ash'};
+
   let previewAudio=null;
   previewBtn.addEventListener('click', async () => {
     if (previewAudio) { previewAudio.pause(); previewAudio=null; }
-    const voice=fVoice.value;
+    const voice=PREVIEW_VOICE_MAP[fVoice.value]||'ash';
     previewBtn.disabled=true; previewBtn.classList.add('loading'); previewBtn.querySelector('.play-icon').textContent='↻';
     try {
       const res=await fetch('https://api.openai.com/v1/audio/speech',{
@@ -869,58 +874,91 @@ Rules:
     const fare=fFare.value.trim(), cancel=fCancel.value.trim(), context=fContext.value.trim();
     if (!code||!name||!retailer||!price) { showError('All four fields are required before starting the call.'); return; }
     callState='connecting'; setStatus('connecting'); lockFields(true);
+
     try {
-      const sessRes=await fetch('https://api.openai.com/v1/realtime/sessions',{
-        method:'POST', headers:{'Authorization':`Bearer ${OPENAI_API_KEY}`,'Content-Type':'application/json'},
-        body:JSON.stringify({model:'gpt-4o-realtime-preview',voice:fVoice.value,input_audio_transcription:{model:'whisper-1'},turn_detection:{type:'server_vad'}})
-      });
-      if (!sessRes.ok) {
-        let msg=`Session creation failed (HTTP ${sessRes.status})`;
-        try{const j=await sessRes.json();msg=j?.error?.message||msg;}catch{}
-        throw new Error(msg);
-      }
-      const ephKey=(await sessRes.json())?.client_secret?.value;
-      if (!ephKey) throw new Error('No ephemeral key returned by session endpoint.');
+      localStream=await navigator.mediaDevices.getUserMedia({audio:true});
+    } catch {
+      callState='idle'; setStatus('idle'); lockFields(false);
+      showError('Microphone access denied — please allow mic permission and try again.');
+      return;
+    }
 
-      pc=new RTCPeerConnection();
-      try { localStream=await navigator.mediaDevices.getUserMedia({audio:true}); }
-      catch { throw new Error('Microphone access denied — please allow mic permission and try again.'); }
-      localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));
-      pc.ontrack=e=>{audioEl.srcObject=e.streams[0];};
+    const prompt=buildPrompt(name,code,airline,layovers,layoverDetails,from,to,depart,ret,retailer,price,origPrice,fare,cancel,context);
 
-      dc=pc.createDataChannel('oai-events',{ordered:true});
-      dc.onopen=()=>{
-        sendSessionUpdate(name,code,airline,layovers,layoverDetails,from,to,depart,ret,retailer,price,origPrice,fare,cancel,context);
+    ws=new WebSocket(`wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${GEMINI_API_KEY}`);
+
+    ws.onopen=()=>{
+      ws.send(JSON.stringify({
+        setup:{
+          model:'models/gemini-3.1-flash-live-preview',
+          generation_config:{
+            response_modalities:['AUDIO'],
+            speech_config:{voice_config:{prebuilt_voice_config:{voice_name:fVoice.value}}}
+          },
+          system_instruction:{parts:[{text:prompt}]}
+        }
+      }));
+    };
+
+    ws.onmessage=ev=>{
+      let msg; try{ msg=JSON.parse(ev.data); }catch{ return; }
+
+      // Setup acknowledged — go live
+      if (msg.setupComplete!==undefined) {
         callState='active'; isMuted=false; isPaused=false;
         startLogEntry(code,name,airline,from,to,depart,retailer,price,origPrice,fVoice.value);
         startTimer(); setStatus('listening'); actionRow.style.display=''; livePromptSection.style.display='';
-        // Agent speaks first — introduce as the customer calling about a price match
+        startMicCapture();
+        // Agent speaks first
         setTimeout(()=>{
-          if(dc?.readyState!=='open') return;
-          dc.send(JSON.stringify({type:'conversation.item.create',item:{type:'message',role:'user',content:[{type:'input_text',text:'[The call just connected. Greet the rep and briefly state why you are calling — you called them.]'}]}}));
-          dc.send(JSON.stringify({type:'response.create'}));
-        }, 600);
-      };
-      dc.onmessage=onServerEvent;
-      dc.onerror=e=>showError(`Data channel error: ${e?.error?.message||'unknown'}`);
-      dc.onclose=()=>{if(callState==='active') teardown();};
+          if(ws?.readyState!==WebSocket.OPEN) return;
+          ws.send(JSON.stringify({clientContent:{turns:[{role:'user',parts:[{text:'[The call just connected. Greet the rep and briefly state why you are calling — you called them.]'}]}],turnComplete:true}}));
+        }, 300);
+        return;
+      }
 
-      const offer=await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      const sdpRes=await fetch('https://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview',{
-        method:'POST', headers:{'Authorization':`Bearer ${ephKey}`,'Content-Type':'application/sdp'}, body:offer.sdp
-      });
-      if (!sdpRes.ok) throw new Error(`SDP exchange failed (HTTP ${sdpRes.status})`);
-      await pc.setRemoteDescription({type:'answer',sdp:await sdpRes.text()});
-    } catch(err) { showError(err.message||'Connection failed.'); teardown(); }
+      const sc=msg.serverContent; if(!sc) return;
+
+      // Audio output
+      if (sc.modelTurn?.parts) {
+        for (const part of sc.modelTurn.parts) {
+          if (part.inlineData?.data) {
+            if(!isMuted&&!isPaused) setStatus('speaking');
+            playPCMChunk(part.inlineData.data);
+          }
+        }
+      }
+
+      // Bot transcript (streaming)
+      if (sc.outputTranscription?.text) appendBotDelta('gemini-bot', sc.outputTranscription.text);
+
+      // Rep/agent transcript
+      if (sc.inputTranscription?.text) {
+        const t=sc.inputTranscription.text.trim(); if(t) addLine('agent',t,false);
+      }
+
+      // Turn complete
+      if (sc.turnComplete) {
+        finalizeBotLine();
+        if(!isMuted&&!isPaused) setStatus('listening');
+      }
+
+      if (msg.error) showError(`Gemini error: ${msg.error.message||'unknown'}`);
+    };
+
+    ws.onerror=()=>showError('WebSocket error — check your Gemini API key and network');
+    ws.onclose=()=>{ if(callState==='active') teardown(); };
   }
 
   function teardown() {
     callState='idle';
     finalizeLogEntry(); finalizeBotLine(); stopTimer();
-    try{dc?.close();}catch{} try{pc?.close();}catch{}
-    localStream?.getTracks().forEach(t=>t.stop()); audioEl.srcObject=null;
-    dc=null; pc=null; localStream=null;
+    try{ processor?.disconnect(); processor=null; }catch{}
+    try{ audioCtx?.close(); audioCtx=null; }catch{}
+    try{ playCtx?.close(); playCtx=null; }catch{}
+    nextPlayTime=0;
+    try{ ws?.close(); }catch{} ws=null;
+    localStream?.getTracks().forEach(t=>t.stop()); localStream=null;
     isMuted=false; isPaused=false;
     muteBtn.textContent='🎤 MUTE'; muteBtn.classList.remove('muted');
     pauseBtn.textContent='⏸ PAUSE'; pauseBtn.classList.remove('paused');
