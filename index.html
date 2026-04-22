@@ -21,53 +21,43 @@
     html,body { height:100%; background:var(--bg); color:var(--text); font-family:var(--sans); font-size:14px; -webkit-font-smoothing:antialiased; }
     body { display:flex; flex-direction:column; min-height:100vh; }
     body.app-locked { overflow:hidden; }
+    body.app-locked .app-shell { visibility:hidden; }
     .app-shell { display:flex; flex-direction:column; min-height:100vh; }
 
     /* Auth */
     .auth-screen {
       position:fixed; inset:0; z-index:20; display:flex; align-items:center; justify-content:center;
-      padding:24px; background:
-        radial-gradient(circle at top, rgba(0,230,118,.13), transparent 35%),
-        linear-gradient(180deg, rgba(10,18,12,.96), rgba(7,9,8,.98));
+      padding:24px; background:#fff;
       font-family:var(--mono);
+    }
+    @media (prefers-color-scheme: dark) {
+      .auth-screen { background:#000; }
     }
     .auth-screen[hidden] { display:none; }
     .auth-panel {
-      width:min(680px, 100%); background:rgba(7,10,8,.94); border:1px solid rgba(0,230,118,.28);
-      box-shadow:0 0 0 1px rgba(0,230,118,.08), 0 24px 80px rgba(0,0,0,.55);
-      color:#A7F3C1; overflow:hidden;
+      width:min(340px, 100%); color:#000;
     }
-    .auth-topbar {
-      display:flex; align-items:center; justify-content:space-between; gap:12px;
-      padding:10px 14px; border-bottom:1px solid rgba(0,230,118,.2); color:#72D596;
-      background:rgba(0,230,118,.05); font-size:11px; letter-spacing:.08em; text-transform:uppercase;
+    @media (prefers-color-scheme: dark) {
+      .auth-panel { color:#fff; }
     }
-    .auth-led { display:flex; align-items:center; gap:8px; }
-    .auth-led-dot { width:8px; height:8px; border-radius:999px; background:#00E676; box-shadow:0 0 10px rgba(0,230,118,.65); }
-    .auth-body { padding:24px 22px 22px; }
-    .auth-copy { margin-bottom:18px; line-height:1.8; font-size:12px; color:#8DCC9F; }
-    .auth-copy strong { color:#D7FFE6; font-weight:500; }
-    .auth-form { display:flex; flex-direction:column; gap:12px; }
-    .auth-label { color:#72D596; font-size:11px; letter-spacing:.08em; text-transform:uppercase; }
+    .auth-body { display:flex; flex-direction:column; align-items:center; gap:18px; padding:0; }
+    .auth-eye { font-size:30px; line-height:1; }
+    .auth-form { width:100%; display:flex; flex-direction:column; align-items:center; gap:10px; }
     .auth-input-row {
-      display:flex; align-items:center; gap:10px; padding:12px 14px; border:1px solid rgba(0,230,118,.26);
-      background:rgba(0,0,0,.28);
+      display:flex; align-items:center; gap:8px; width:min(260px, 100%);
+      padding:0 0 6px; border:none; border-bottom:1px solid currentColor; background:transparent;
     }
-    .auth-prompt { color:#00E676; white-space:nowrap; }
+    .auth-prompt { color:inherit; white-space:nowrap; }
     .auth-input {
-      flex:1; min-width:0; border:none; outline:none; background:transparent; color:#E8FFEF;
+      flex:1; min-width:0; border:none; outline:none; background:transparent; color:inherit;
       font:inherit; font-size:14px;
     }
-    .auth-input::placeholder { color:#4E7F5E; }
-    .auth-actions { display:flex; align-items:center; justify-content:space-between; gap:12px; }
-    .auth-button {
-      padding:10px 16px; border:1px solid rgba(0,230,118,.3); background:#00E676; color:#041108;
-      font:inherit; font-size:12px; letter-spacing:.08em; text-transform:uppercase; cursor:pointer;
+    .auth-input::placeholder { color:#7a7a7a; }
+    @media (prefers-color-scheme: dark) {
+      .auth-input::placeholder { color:#8a8a8a; }
     }
-    .auth-button:hover { opacity:.9; }
-    .auth-status { min-height:18px; color:#FF7A7A; font-size:11px; letter-spacing:.04em; }
-    .auth-status.ok { color:#90F7AF; }
-    .auth-foot { margin-top:18px; color:#5E9C72; font-size:11px; line-height:1.7; }
+    .auth-button { display:none; }
+    .auth-status { min-height:16px; color:#b00020; font-size:11px; letter-spacing:.04em; text-align:center; }
     .auth-blink { animation:blink 1s step-end infinite; }
 
     /* Header */
@@ -319,32 +309,16 @@
 
 <div class="auth-screen" id="auth-screen">
   <div class="auth-panel">
-    <div class="auth-topbar">
-      <div class="auth-led">
-        <span class="auth-led-dot"></span>
-        <span>Secure Terminal</span>
-      </div>
-      <span>Capital One Travel Access</span>
-    </div>
     <div class="auth-body">
-      <div class="auth-copy">
-        <div>Protected route detected.</div>
-        <div>Enter password to continue<span class="auth-blink">_</span></div>
-      </div>
+      <div class="auth-eye">👀</div>
       <form class="auth-form" id="auth-form">
-        <label class="auth-label" for="auth-password">Password</label>
         <div class="auth-input-row">
           <span class="auth-prompt">></span>
-          <input class="auth-input" id="auth-password" type="password" autocomplete="current-password" placeholder="enter password" spellcheck="false">
+          <input class="auth-input" id="auth-password" type="password" autocomplete="current-password" placeholder="login_" spellcheck="false">
         </div>
-        <div class="auth-actions">
-          <div class="auth-status" id="auth-status"></div>
-          <button class="auth-button" type="submit">Unlock</button>
-        </div>
+        <button class="auth-button" type="submit">Unlock</button>
       </form>
-      <div class="auth-foot">
-        Session access is kept for this tab only. Close the tab to require login again.
-      </div>
+      <div class="auth-status" id="auth-status"></div>
     </div>
   </div>
 </div>
@@ -561,7 +535,7 @@
 </div>
 
 <script>
-  const ACCESS_PASSWORDS = ["thankurichardfairbank", "ilovetoscam"];
+  const ACCESS_PASSWORDS = ["friendaccess", "familyaccess"];
   const AUTH_STORAGE_KEY = "c1_terminal_auth";
   let OPENAI_API_KEY = '';
   let GEMINI_API_KEY = '';
